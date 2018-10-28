@@ -177,15 +177,15 @@ def create_capabilities(ctx):
 
     recs = [
         dict(
-            code="hw.cpu.x86.avx",
+            code="cpu.x86.avx",
             description="Intel x86 CPU instruction set extensions for AVX",
         ),
         dict(
-            code="hw.cpu.x86.avx2",
+            code="cpu.x86.avx2",
             description="Intel x86 CPU instruction set extensions for AVX2",
         ),
         dict(
-            code="hw.cpu.x86.vmx",
+            code="cpu.x86.vmx",
             description="Intel x86 CPU instruction set extensions for VMX",
         ),
         dict(

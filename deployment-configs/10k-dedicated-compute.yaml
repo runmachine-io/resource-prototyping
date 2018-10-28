@@ -1,8 +1,10 @@
-default_provider_profile: 24cpu-128G-1T-intel-hdd-shared
+default_provider_profile: 12cpu-64G-4T-hdd-dedicated
 layout:
   sites:
     - east
     - west
+    - north
+    - south
   rows_per_site: 2
   racks_per_row: 25
   nodes_per_rack: 20

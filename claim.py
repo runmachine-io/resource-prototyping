@@ -5,6 +5,8 @@ from sqlalchemy import func
 
 import resource_models
 
+UNLIMITED = -1
+
 
 class ResourceConstraint(object):
     def __init__(self, resource_class, min_amount, max_amount,
@@ -323,7 +325,7 @@ def _providers_matching_capability_constraint(ctx, cap_constraint):
         )
         cap_provider_ids = set(providers)
         matched_provs = cap_provider_ids
-        cap_providers.update({p.id: p for p in providers})
+        cap_providers.update(providers)
 
     if cap_constraint.any_caps:
         any_caps = cap_constraint.any_caps
@@ -344,11 +346,14 @@ def _providers_matching_capability_constraint(ctx, cap_constraint):
                 return NoMatches
         else:
             matched_provs = cap_provider_ids
-        cap_providers.update({p.id: p for p in providers})
+        cap_providers.update(providers)
 
     if cap_constraint.forbid_caps:
         forbid_caps = cap_constraint.forbid_caps
-        providers = _find_providers_with_any_caps(ctx, forbid_caps)
+        # Because we pass excludes on to other iterations and constraints, we
+        # cannot limit the number of excluded providers that match...
+        providers = _find_providers_with_any_caps(
+            ctx, forbid_caps, limit=UNLIMITED)
         if providers:
             print "Excluding %d providers with forbidden caps %s" % (
                 len(providers), forbid_caps
@@ -457,7 +462,9 @@ def _find_providers_with_all_caps(ctx, caps, limit=50):
         p_caps_tbl.c.provider_id
     ).having(
         func.count(p_caps_tbl.c.capability_id) == len(required_caps)
-    ).limit(limit)
+    )
+    if limit != UNLIMITED:
+        sel = sel.limit(limit)
     sess = resource_models.get_session()
     return {
         r[0]: r[1] for r in sess.execute(sel)
@@ -494,7 +501,9 @@ def _find_providers_with_any_caps(ctx, caps, limit=50):
         p_to_p_caps
     ).where(
         p_caps_tbl.c.capability_id.in_(cap_ids)
-    ).limit(limit)
+    )
+    if limit != UNLIMITED:
+        sel = sel.limit(limit)
     sess = resource_models.get_session()
     return {
         r[0]: r[1] for r in sess.execute(sel)
@@ -617,7 +626,8 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
     )
     if exclude:
         sel = sel.where(~p_tbl.c.id.in_(set(exclude)))
-    sel = sel.limit(limit)
+    if limit != UNLIMITED:
+        sel = sel.limit(limit)
     sess = resource_models.get_session()
     return {
         r[0]: r[1] for r in sess.execute(sel)
