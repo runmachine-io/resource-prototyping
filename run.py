@@ -11,6 +11,7 @@ import claim
 import load
 import claim_config
 import deployment_config
+import provider_profile
 import resource_models
 
 _LOG_FORMAT = "%(level)s %(message)s"
@@ -22,6 +23,9 @@ _CLAIM_CONFIGS_DIR = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'claim-configs',
 )
 _DEFAULT_CLAIM_CONFIG = '1cpu-64M-10G'
+_PROVIDER_PROFILES_DIR = os.path.join(
+    os.path.abspath(os.path.dirname(__file__)), 'provider-profiles',
+)
 
 
 class RunContext(object):
@@ -87,10 +91,17 @@ def setup_opts(parser):
 
 
 def main(ctx):
+    prov_profiles = {}
+    for fn in os.listdir(_PROVIDER_PROFILES_DIR):
+        fp = os.path.join(_PROVIDER_PROFILES_DIR, fn)
+        if os.path.isfile(fp) and fn.endswith('.yaml'):
+            prof_name = fn[0:len(fn) - 5]
+            prov_profiles[prof_name] = provider_profile.ProviderProfile(fp)
     if ctx.args.reset:
         ctx.status("loading deployment config")
         fp = os.path.join(_DEPLOYMENT_CONFIGS_DIR, args.deployment_config)
-        ctx.deployment_config = deployment_config.DeploymentConfig(fp)
+        ctx.deployment_config = deployment_config.DeploymentConfig(
+            fp, prov_profiles)
         ctx.status_ok()
         load.load(ctx)
     find_claims(ctx)

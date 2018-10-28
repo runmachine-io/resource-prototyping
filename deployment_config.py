@@ -9,20 +9,16 @@ import yaml
 import resource_models
 
 
-class Profile(object):
-    def __init__(self, name, inventory, capabilities):
-        self.name = name
-        self.inventory = inventory
-        self.capabilities = capabilities
-
-    def __repr__(self):
-        return "Profile(name=%s)" % self.name
-
-
 class DeploymentConfig(object):
-    def __init__(self, fp):
+    def __init__(self, fp, provider_profiles):
         """Loads the deployment configuration from a supplied filepath to a
         YAML file.
+
+        :param fp: path to the deployment config YAML file
+        :param provider_profiles: dict, keyed by profile name, of
+                                  ProviderProfile objects used to set inventory
+                                  and capabilities for a provider involved in
+                                  the deployment
         """
         if not fp.endswith('.yaml'):
             fp = fp + '.yaml'
@@ -36,15 +32,14 @@ class DeploymentConfig(object):
             except yaml.YAMLError as err:
                 raise RuntimeError("Unable to load deployment configuration "
                                    "%s. Problem parsing file: %s." % (fp, err))
+        self.provider_profiles = provider_profiles
         self.layout = config_dict['layout']
-        self.profiles = config_dict['profiles']
+        self.default_provider_profile = config_dict['default_provider_profile']
         # A hashmap of partition name to partition object
         self.partitions = {}
         self._load_partitions()
-        # A hashmap of profiles by site name that compute hosts will use for
-        # inventory and traits
-        self.site_profiles = {}
-        self._load_site_profiles()
+        # A hashmap of provider group name to provider profile name
+        self.group_provider_profiles = config_dict['group_provider_profiles']
         # A hashmap of provider group name to provider group object
         self.provider_groups = {}
         self._load_provider_groups()
@@ -55,26 +50,6 @@ class DeploymentConfig(object):
     def _load_partitions(self):
         # For now, just have a single hard-coded partition
         self.partitions['part0'] = resource_models.Partition('part0')
-
-    def _load_site_profiles(self):
-        for prof_name, prof in self.profiles.items():
-            for site_name in prof['sites']:
-                prof_inv = {}
-                for rc_name, inv in prof['inventory'].items():
-                    if 'min_unit' not in inv:
-                        inv['min_unit'] = 1
-                    if 'max_unit' not in inv:
-                        inv['max_unit'] = inv['total']
-                    if 'step_size' not in inv:
-                        inv['step_size'] = 1
-                    if 'allocation_ratio' not in inv:
-                        inv['allocation_ratio'] = 1.0
-                    if 'reserved' not in inv:
-                        inv['reserved'] = 0
-                    prof_inv[rc_name] = inv
-                caps = prof['capabilities']
-                p = Profile(prof_name, prof_inv, caps)
-                self.site_profiles[site_name] = p
 
     def _load_provider_groups(self):
         for site_name in self.layout['sites']:
@@ -183,14 +158,24 @@ class DeploymentConfig(object):
         # TODO(jaypipes): Support more than a single partition in the
         # deployment config layout section
         partition = self.partitions['part0']
+        def_profile_name = self.default_provider_profile
         for site_name in self.layout['sites']:
+            profile_name = self.group_provider_profiles.get(
+                site_name, def_profile_name)
             for row_id in range(self.count_rows_per_site):
+                row_name = "%s-row%s" % (site_name, row_id)
+                profile_name = self.group_provider_profiles.get(
+                    row_name, profile_name)
                 for rack_id in range(self.count_racks_per_row):
+                    rack_name = "%s-row%s-rack%s" % (
+                        site_name, row_id, rack_id)
+                    profile_name = self.group_provider_profiles.get(
+                        rack_name, profile_name)
                     for node_id in range(self.count_nodes_per_rack):
                         pg_names = [
                             site_name,
-                            "%s-row%s" % (site_name, row_id),
-                            "%s-row%s-rack%s" % (site_name, row_id, rack_id),
+                            row_name,
+                            rack_name,
                         ]
                         provider_name = "%s-row%s-rack%s-node%s" % (
                             site_name,
@@ -202,7 +187,7 @@ class DeploymentConfig(object):
                             self.provider_groups[pg_name]
                             for pg_name in pg_names
                         ]
-                        profile = self.site_profiles[site_name]
+                        profile = self.provider_profiles[profile_name]
 
                         # OK, now we construct the distance matrix. For now,
                         # we're just going to hard-code the network latency
