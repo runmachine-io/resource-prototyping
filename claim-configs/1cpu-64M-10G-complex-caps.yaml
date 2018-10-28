@@ -12,8 +12,10 @@ request_groups:
         min: 1000000000
         max: 1000000000
     capabilities:
-      - any:
-          - cpu.x86.avx
+      - require:
           - cpu.x86.vmx
+        any:
+          - cpu.x86.avx
+          - cpu.x86.avx2
       - forbid:
           - storage.disk.ssd
