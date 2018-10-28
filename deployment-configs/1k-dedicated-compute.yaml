@@ -1,4 +1,4 @@
-default_provider_profile: 24cpu-128G-1T-intel-hdd-shared
+default_provider_profile: 12cpu-64G-4T-ssd-dedicated
 layout:
   sites:
     - east

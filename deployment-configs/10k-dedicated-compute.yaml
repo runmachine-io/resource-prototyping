@@ -1,4 +1,4 @@
-default_provider_profile: 12cpu-64G-4T-hdd-dedicated
+default_provider_profile: 12cpu-64G-4T-ssd-dedicated
 layout:
   sites:
     - east
