@@ -472,7 +472,7 @@ def _find_providers_with_all_caps(ctx, caps, limit=50):
     ).group_by(
         p_caps_tbl.c.provider_id
     ).having(
-        func.count(p_caps_tbl.c.capability_id) == len(required_caps)
+        func.count(p_caps_tbl.c.capability_id) == len(caps)
     )
     if limit != UNLIMITED:
         sel = sel.limit(limit)
