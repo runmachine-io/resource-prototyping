@@ -429,14 +429,14 @@ def create_providers(ctx):
     ctx.status_ok()
 
     ctx.status("caching resource class and capability internal IDs")
-    for prof in ctx.deployment_config.profiles.values():
-        for rc_code in prof['inventory'].keys():
+    for prof in ctx.deployment_config.provider_profiles.values():
+        for rc_code in prof.inventory.keys():
             if rc_code not in rc_ids:
                 sel = sa.select([rc_tbl.c.id]).where(rc_tbl.c.code == rc_code)
                 res = sess.execute(sel).fetchone()
                 rc_id = res[0]
                 rc_ids[rc_code] = rc_id
-        for cap_code in prof['capabilities']:
+        for cap_code in prof.capabilities:
             if cap_code not in cap_ids:
                 sel = sa.select([cap_tbl.c.id]).where(
                     cap_tbl.c.code == cap_code)
