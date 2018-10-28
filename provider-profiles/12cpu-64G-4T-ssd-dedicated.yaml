@@ -1,29 +1,27 @@
 capabilities:
-  - hw.cpu.x86.avx2
-  - hw.cpu.x86.vmx
-  - storage.disk.hdd
+  - storage.disk.ssd
 inventory:
   runm.cpu.shared:
-    total: 24
+    total: 12
     reserved: 0
-    allocation_ratio: 16.0
+    allocation_ratio: 1.0
   runm.memory:
-    # 128GiB
-    total: 137438953472
+    # 64GiB
+    total: 68719476736
     # 256MiB
     reserved: 268435456
-    allocation_ratio: 1.5
+    allocation_ratio: 1.0
     # 64MiB
     min_unit: 67108864
-    # 96GiB
-    max_unit: 103079215104
+    # 64GiB
+    max_unit: 68719476736
     # 64MiB
     step_size: 67108864
   runm.block_storage:
-    # 1000GB
-    total: 1000000000000
+    # 4000GB
+    total: 4000000000000
     allocation_ratio: 1.0
     # 10GB
     min_unit: 10000000000
-    # 10GB
+    # 50GB
     step_size: 10000000000

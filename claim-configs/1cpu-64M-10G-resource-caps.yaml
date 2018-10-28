@@ -5,7 +5,7 @@ request_groups:
         max: 1
         capabilities:
           require:
-            - hw.cpu.x86.avx2
+            - cpu.x86.avx2
       runm.memory:
         # 64M
         min: 67108864

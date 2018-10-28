@@ -34,10 +34,14 @@ class RunContext(object):
         self.deployment_config = None
 
     def status(self, msg):
-        sys.stdout.write(msg + " ... ")
+        if self.args.quiet:
+            return
+        sys.stdout.write("action: " + msg + " ... ")
         sys.stdout.flush()
 
     def status_ok(self, ):
+        if self.args.quiet:
+            return
         sys.stdout.write("ok\n")
         sys.stdout.flush()
 
@@ -46,6 +50,18 @@ class RunContext(object):
         sys.stdout.flush()
         sys.stderr.write(" error: %s\n" % err)
         sys.stderr.flush()
+
+    def info(self, msg, *msg_args):
+        if self.args.quiet:
+            return
+        if msg_args:
+            msg = msg % msg_args
+        sys.stdout.write("info: %s\n" % msg)
+
+    def out(self, msg, *msg_args):
+        if msg_args:
+            msg = msg % msg_args
+        sys.stdout.write("%s\n" % msg)
 
 
 def find_claims(ctx):
@@ -61,11 +77,15 @@ def find_claims(ctx):
         consumer, ctx.claim_config.claim_request_groups, claim_time,
         release_time)
     claims = claim.process_claim_request(ctx, cr)
-    for c in claims:
-        print c
+    ctx.info("found %d claims", len(claims))
+    for x, c in enumerate(claims):
+        ctx.out("claim %d: %s", x, c)
 
 
 def setup_opts(parser):
+    parser.add_argument('--quiet', action='store_true',
+                        default=False, help="Only print critical output.")
+
     parser.add_argument('--reset', action='store_true',
                         default=False, help="Reset and reload the database.")
 

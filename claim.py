@@ -5,6 +5,8 @@ from sqlalchemy import func
 
 import resource_models
 
+UNLIMITED = -1
+
 
 class ResourceConstraint(object):
     def __init__(self, resource_class, min_amount, max_amount,
@@ -313,29 +315,35 @@ def _providers_matching_capability_constraint(ctx, cap_constraint):
         required_caps = cap_constraint.require_caps
         providers = _find_providers_with_all_caps(ctx, required_caps)
         if not providers:
-            print "Failed to find provider with required caps %s" % (
-                required_caps
+            ctx.info(
+                "failed to find provider with required caps %s",
+                required_caps,
             )
             return NoMatches
 
-        print "Found %d providers with required caps %s" % (
-            len(providers), required_caps
+        ctx.info(
+            "found %d providers with required caps %s",
+            len(providers),
+            required_caps,
         )
         cap_provider_ids = set(providers)
         matched_provs = cap_provider_ids
-        cap_providers.update({p.id: p for p in providers})
+        cap_providers.update(providers)
 
     if cap_constraint.any_caps:
         any_caps = cap_constraint.any_caps
         providers = _find_providers_with_any_caps(ctx, any_caps)
         if not providers:
-            print "Failed to find provider with any caps %s" % (
-                any_caps
+            ctx.info(
+                "failed to find provider with any caps %s",
+                any_caps,
             )
             return NoMatches
 
-        print "Found %d providers with any caps %s" % (
-            len(providers), any_caps
+        ctx.info(
+            "found %d providers with any caps %s",
+            len(providers),
+            any_caps,
         )
         cap_provider_ids = set(providers)
         if matched_provs:
@@ -344,14 +352,19 @@ def _providers_matching_capability_constraint(ctx, cap_constraint):
                 return NoMatches
         else:
             matched_provs = cap_provider_ids
-        cap_providers.update({p.id: p for p in providers})
+        cap_providers.update(providers)
 
     if cap_constraint.forbid_caps:
         forbid_caps = cap_constraint.forbid_caps
-        providers = _find_providers_with_any_caps(ctx, forbid_caps)
+        # Because we pass excludes on to other iterations and constraints, we
+        # cannot limit the number of excluded providers that match...
+        providers = _find_providers_with_any_caps(
+            ctx, forbid_caps, limit=UNLIMITED)
         if providers:
-            print "Excluding %d providers with forbidden caps %s" % (
-                len(providers), forbid_caps
+            ctx.info(
+                "excluding %d providers with forbidden caps %s",
+                len(providers),
+                forbid_caps,
             )
             cap_provider_ids = set(providers)
             if matched_provs:
@@ -368,11 +381,12 @@ def _providers_matching_capability_constraint(ctx, cap_constraint):
             # return NoExclude to indicate that there was actually a positive
             # result from the constraint matching.
             if not cap_constraint.require_caps and not cap_constraint.any_caps:
-                print (
-                    "Found 0 providers matching %s."
+                ctx.info(
+                    "found 0 providers matching %s."
                     "\n\t(constraint only contains a forbid section "
                     "and no matches were found for those forbidden "
-                    "capabilities)" % cap_constraint
+                    "capabilities)",
+                    cap_constraint,
                 )
                 return NoExclude
 
@@ -400,11 +414,13 @@ def _process_resource_constraints(ctx, mctx):
             exclude=mctx.exclude,
         )
         if not mctx.match_and(providers):
-            print "Failed to find provider matching %s" % rc_constraint
+            ctx.info("failed to find provider matching %s", rc_constraint)
             return False
 
-        print "Found %d providers matching %s" % (
-            len(providers), rc_constraint,
+        ctx.info(
+            "found %d providers matching %s",
+            len(providers),
+            rc_constraint,
         )
 
     return True
@@ -457,7 +473,9 @@ def _find_providers_with_all_caps(ctx, caps, limit=50):
         p_caps_tbl.c.provider_id
     ).having(
         func.count(p_caps_tbl.c.capability_id) == len(required_caps)
-    ).limit(limit)
+    )
+    if limit != UNLIMITED:
+        sel = sel.limit(limit)
     sess = resource_models.get_session()
     return {
         r[0]: r[1] for r in sess.execute(sel)
@@ -494,7 +512,9 @@ def _find_providers_with_any_caps(ctx, caps, limit=50):
         p_to_p_caps
     ).where(
         p_caps_tbl.c.capability_id.in_(cap_ids)
-    ).limit(limit)
+    )
+    if limit != UNLIMITED:
+        sel = sel.limit(limit)
     sess = resource_models.get_session()
     return {
         r[0]: r[1] for r in sess.execute(sel)
@@ -617,7 +637,8 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
     )
     if exclude:
         sel = sel.where(~p_tbl.c.id.in_(set(exclude)))
-    sel = sel.limit(limit)
+    if limit != UNLIMITED:
+        sel = sel.limit(limit)
     sess = resource_models.get_session()
     return {
         r[0]: r[1] for r in sess.execute(sel)
