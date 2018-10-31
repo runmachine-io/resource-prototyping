@@ -110,20 +110,28 @@ def setup_opts(parser):
                         help="Claim configuration to use.")
 
 
-def main(ctx):
+def get_provider_profiles():
     prov_profiles = {}
     for fn in os.listdir(_PROVIDER_PROFILES_DIR):
         fp = os.path.join(_PROVIDER_PROFILES_DIR, fn)
         if os.path.isfile(fp) and fn.endswith('.yaml'):
             prof_name = fn[0:len(fn) - 5]
             prov_profiles[prof_name] = provider_profile.ProviderProfile(fp)
+    return prov_profiles
+
+
+def reset(ctx):
+    ctx.status("loading deployment config")
+    fp = os.path.join(_DEPLOYMENT_CONFIGS_DIR, args.deployment_config)
+    ctx.deployment_config = deployment_config.DeploymentConfig(
+        fp, get_provider_profiles())
+    ctx.status_ok()
+    load.load(ctx)
+
+
+def main(ctx):
     if ctx.args.reset:
-        ctx.status("loading deployment config")
-        fp = os.path.join(_DEPLOYMENT_CONFIGS_DIR, args.deployment_config)
-        ctx.deployment_config = deployment_config.DeploymentConfig(
-            fp, prov_profiles)
-        ctx.status_ok()
-        load.load(ctx)
+        reset(ctx)
     find_claims(ctx)
 
 
