@@ -18,7 +18,7 @@ _LOG_FORMAT = "%(level)s %(message)s"
 _DEPLOYMENT_CONFIGS_DIR = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'deployment-configs',
 )
-_DEFAULT_DEPLOYMENT_CONFIG = '1k-shared-compute'
+_DEFAULT_DEPLOYMENT_CONFIG = '100-shared-compute'
 _CLAIM_CONFIGS_DIR = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'claim-configs',
 )
