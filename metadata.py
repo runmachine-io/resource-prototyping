@@ -6,7 +6,6 @@ import sqlalchemy as sa
 import resource_models
 
 _OBJECT_TYPE_MAP = None
-_PROVIDER_TYPE_MAP = None
 
 
 def _insert_records(tbl, recs):

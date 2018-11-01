@@ -6,13 +6,13 @@ import subprocess
 
 import sqlalchemy as sa
 
+import lookup
 import metadata
 import resource_models
 
 _RESOURCE_SCHEMA_FILE = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'resource_schema.sql',
 )
-_PROVIDER_TYPE_MAP = None
 
 
 def _insert_records(tbl, recs):
@@ -85,20 +85,6 @@ def create_provider_types(ctx):
         ctx.status_ok()
     except Exception as err:
         ctx.status_fail(err)
-
-
-def get_provider_type_map():
-    """Returns a dict, keyed by provider type string code, of internal provider
-    type ID.
-    """
-    global _PROVIDER_TYPE_MAP
-    if _PROVIDER_TYPE_MAP is not None:
-        return _PROVIDER_TYPE_MAP
-    tbl = resource_models.get_table('provider_types')
-    sel = sa.select([tbl.c.id, tbl.c.code])
-    sess = resource_models.get_session()
-    _PROVIDER_TYPE_MAP = {r[1]: r[0] for r in sess.execute(sel)}
-    return _PROVIDER_TYPE_MAP
 
 
 def create_consumer_types(ctx):
@@ -410,7 +396,7 @@ def create_providers(ctx):
                 distance_ids[d_key] = res[0]
     ctx.status_ok()
 
-    compute_prov_type_id = get_provider_type_map()['runm.compute']
+    compute_prov_type_id = lookup.provider_type_id_from_code('runm.compute')
     ctx.status("creating providers")
     try:
         for p in ctx.deployment_config.providers.values():
