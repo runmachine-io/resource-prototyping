@@ -144,22 +144,20 @@ CREATE TABLE consumers (
 , type_id SMALLINT NOT NULL
 , uuid CHAR(32) NOT NULL
 , generation INT UNSIGNED NOT NULL
-, owner_account_uuid CHAR(32) NOT NULL
 , owner_project_uuid CHAR(32) NOT NULL
 , owner_user_uuid CHAR(32) NOT NULL
 , UNIQUE INDEX uix_uuid (uuid)
 , INDEX ix_type_id (type_id)
 , INDEX ix_owner (owner_project_uuid, owner_user_uuid)
-, INDEX ix_account_uuid (owner_account_uuid)
 ) CHARACTER SET latin1 COLLATE latin1_bin;
 
 CREATE TABLE allocations (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY
 , consumer_id BIGINT NOT NULL
-, claim_time BIGINT NOT NULL
-, release_time BIGINT NOT NULL
-, INDEX ix_consumer_window (consumer_id, claim_time, release_time)
-, INDEX ix_window (claim_time, release_time)
+, start_time BIGINT NOT NULL
+, end_time BIGINT NOT NULL
+, INDEX ix_consumer_window (consumer_id, start_time, end_time)
+, INDEX ix_window (start_time, end_time)
 ) CHARACTER SET latin1 COLLATE latin1_bin;
 
 CREATE TABLE allocation_items (

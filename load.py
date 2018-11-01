@@ -108,6 +108,20 @@ def create_consumer_types(ctx):
         ctx.status_fail(err)
 
 
+def get_consumer_type_map():
+    """Returns a dict, keyed by consumer type string code, of internal consumer
+    type ID.
+    """
+    global _CONSUMER_TYPE_MAP
+    if _CONSUMER_TYPE_MAP is not None:
+        return _CONSUMER_TYPE_MAP
+    tbl = resource_models.get_table('consumer_types')
+    sel = sa.select([tbl.c.id, tbl.c.code])
+    sess = resource_models.get_session()
+    _CONSUMER_TYPE_MAP = {r[1]: r[0] for r in sess.execute(sel)}
+    return _CONSUMER_TYPE_MAP
+
+
 def create_capabilities(ctx):
     ctx.status("creating capabilities")
     tbl = resource_models.get_table('capabilities')
@@ -400,7 +414,6 @@ def create_providers(ctx):
     ctx.status("creating providers")
     try:
         for p in ctx.deployment_config.providers.values():
-
             metadata.create_object(sess, 'runm.provider', p.uuid, p.name)
 
             # Create the base provider record

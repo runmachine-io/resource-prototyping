@@ -114,11 +114,12 @@ class Partition(object):
 
 
 class Provider(object):
-    def __init__(self, name=None, partition=None, groups=None, profile=None, id=None, uuid=None):
+    def __init__(self, name=None, partition=None, groups=None, profile=None, id=None, uuid=None, generation=None):
         self.id = id
         self.name = name
         self.partition = partition
         self.uuid = uuid or str(uuidlib.uuid4()).replace('-', '')
+        self.generation = generation
         # Collection of provider group objects this provider is in
         self.groups = groups
         self.profile = profile
@@ -154,10 +155,11 @@ class Provider(object):
 
 class Consumer(object):
     def __init__(self, name, uuid=None, project=None, user=None):
+        self.id = None
         self.name = name
         self.uuid = uuid or str(uuidlib.uuid4()).replace('-', '')
-        self.project = project
-        self.user = user
+        self.project = project or str(uuidlib.uuid4()).replace('-', '')
+        self.user = user or str(uuidlib.uuid4()).replace('-', '')
 
     def __repr__(self):
         uuid_str = ""
