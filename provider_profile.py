@@ -30,10 +30,10 @@ class ProviderProfile(object):
         self.name = name
         # Simple list of capability names that the provider has
         self.capabilities = config_dict.get('capabilities', [])
-        # dict, keyed by resource class name, of inventory information this
+        # dict, keyed by resource type name, of inventory information this
         # provider profile contains. The inventory information includes total,
         # reserved, min_unit, max_unit, step_size and allocation_ratio data
-        # points for that resource class.
+        # points for that resource type.
         self.inventory = self._load_inventory(config_dict['inventory'])
 
     def __repr__(self):

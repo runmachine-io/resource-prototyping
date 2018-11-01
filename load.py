@@ -6,13 +6,13 @@ import subprocess
 
 import sqlalchemy as sa
 
+import lookup
+import metadata
 import resource_models
 
 _RESOURCE_SCHEMA_FILE = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'resource_schema.sql',
 )
-_OBJECT_TYPE_MAP = None
-_PROVIDER_TYPE_MAP = None
 
 
 def _insert_records(tbl, recs):
@@ -34,58 +34,9 @@ def reset_db(ctx):
     ctx.status_ok()
 
 
-def create_object_types(ctx):
-    ctx.status("creating object types")
-    tbl = resource_models.get_table('object_types')
-
-    recs = [
-        dict(
-            code="runm.partition",
-            description="A division of resources. A deployment unit for runm",
-        ),
-        dict(
-            code="runm.provider",
-            description="A provider of some resources, e.g. a compute node or "
-                        "an SR-IOV NIC",
-        ),
-        dict(
-            code="runm.provider_group",
-            description="A group of providers",
-        ),
-        dict(
-            code="runm.image",
-            description="A bootable bunch of bits",
-        ),
-        dict(
-            code="runm.machine",
-            description="Created by a user, a machine consumes compute "
-                        "resources from one of more providers",
-        ),
-    ]
-    try:
-        _insert_records(tbl, recs)
-        ctx.status_ok()
-    except Exception as err:
-        ctx.status_fail(err)
-
-
-def get_object_type_map():
-    """Returns a dict, keyed by object type string code, of internal object
-    type ID.
-    """
-    global _OBJECT_TYPE_MAP
-    if _OBJECT_TYPE_MAP is not None:
-        return _OBJECT_TYPE_MAP
-    tbl = resource_models.get_table('object_types')
-    sel = sa.select([tbl.c.id, tbl.c.code])
-    sess = resource_models.get_session()
-    _OBJECT_TYPE_MAP = {r[1]: r[0] for r in sess.execute(sel)}
-    return _OBJECT_TYPE_MAP
-
-
-def create_resource_classes(ctx):
-    ctx.status("creating resource classes")
-    tbl = resource_models.get_table('resource_classes')
+def create_resource_types(ctx):
+    ctx.status("creating resource types")
+    tbl = resource_models.get_table('resource_types')
 
     recs = [
         dict(
@@ -136,20 +87,6 @@ def create_provider_types(ctx):
         ctx.status_fail(err)
 
 
-def get_provider_type_map():
-    """Returns a dict, keyed by provider type string code, of internal provider
-    type ID.
-    """
-    global _PROVIDER_TYPE_MAP
-    if _PROVIDER_TYPE_MAP is not None:
-        return _PROVIDER_TYPE_MAP
-    tbl = resource_models.get_table('provider_types')
-    sel = sa.select([tbl.c.id, tbl.c.code])
-    sess = resource_models.get_session()
-    _PROVIDER_TYPE_MAP = {r[1]: r[0] for r in sess.execute(sel)}
-    return _PROVIDER_TYPE_MAP
-
-
 def create_consumer_types(ctx):
     ctx.status("creating consumer types")
     tbl = resource_models.get_table('consumer_types')
@@ -169,6 +106,20 @@ def create_consumer_types(ctx):
         ctx.status_ok()
     except Exception as err:
         ctx.status_fail(err)
+
+
+def get_consumer_type_map():
+    """Returns a dict, keyed by consumer type string code, of internal consumer
+    type ID.
+    """
+    global _CONSUMER_TYPE_MAP
+    if _CONSUMER_TYPE_MAP is not None:
+        return _CONSUMER_TYPE_MAP
+    tbl = resource_models.get_table('consumer_types')
+    sel = sa.select([tbl.c.id, tbl.c.code])
+    sess = resource_models.get_session()
+    _CONSUMER_TYPE_MAP = {r[1]: r[0] for r in sess.execute(sel)}
+    return _CONSUMER_TYPE_MAP
 
 
 def create_capabilities(ctx):
@@ -318,9 +269,7 @@ def create_distances(ctx):
 
 def create_partitions(ctx):
     ctx.status("creating partitions")
-    obj_tbl = resource_models.get_table('object_names')
     part_tbl = resource_models.get_table('partitions')
-    object_type_id = get_object_type_map()['runm.partition']
 
     sess = resource_models.get_session()
 
@@ -331,14 +280,9 @@ def create_partitions(ctx):
             part_uuid = p.partition.uuid
             if part_uuid in created:
                 continue
-            # Create the object lookup record
-            obj_rec = dict(
-                object_type=object_type_id,
-                uuid=part_uuid,
-                name=p.partition.name,
-            )
-            ins = obj_tbl.insert().values(**obj_rec)
-            sess.execute(ins)
+
+            metadata.create_object(
+                sess, 'runm.partition', part_uuid, p.partition.name)
 
             # Create the base provider group record
             part_rec = dict(
@@ -357,22 +301,14 @@ def create_partitions(ctx):
 
 def create_provider_groups(ctx):
     ctx.status("creating provider groups")
-    obj_tbl = resource_models.get_table('object_names')
     pg_tbl = resource_models.get_table('provider_groups')
-    object_type_id = get_object_type_map()['runm.provider_group']
 
     sess = resource_models.get_session()
 
     try:
         for pg in ctx.deployment_config.provider_groups.values():
-            # Create the object lookup record
-            obj_rec = dict(
-                object_type=object_type_id,
-                uuid=pg.uuid,
-                name=pg.name,
-            )
-            ins = obj_tbl.insert().values(**obj_rec)
-            sess.execute(ins)
+            metadata.create_object(
+                sess, 'runm.provider_group', pg.uuid, pg.name)
 
             # Create the base provider group record
             pg_rec = dict(
@@ -389,8 +325,7 @@ def create_provider_groups(ctx):
 
 
 def create_providers(ctx):
-    obj_tbl = resource_models.get_table('object_names')
-    rc_tbl = resource_models.get_table('resource_classes')
+    rc_tbl = resource_models.get_table('resource_types')
     cap_tbl = resource_models.get_table('capabilities')
     part_tbl = resource_models.get_table('partitions')
     pg_tbl = resource_models.get_table('provider_groups')
@@ -407,7 +342,7 @@ def create_providers(ctx):
     part_ids = {}
     # in-process cache of provider group name -> internal ID
     pg_ids = {}
-    # in-process cache of resource class code -> internal ID
+    # in-process cache of resource type code -> internal ID
     rc_ids = {}
     # in-process cache of capability code -> internal ID
     cap_ids = {}
@@ -428,7 +363,7 @@ def create_providers(ctx):
             pg_ids[pg.uuid] = res[0]
     ctx.status_ok()
 
-    ctx.status("caching resource class and capability internal IDs")
+    ctx.status("caching resource type and capability internal IDs")
     for prof in ctx.deployment_config.provider_profiles.values():
         for rc_code in prof.inventory.keys():
             if rc_code not in rc_ids:
@@ -475,19 +410,11 @@ def create_providers(ctx):
                 distance_ids[d_key] = res[0]
     ctx.status_ok()
 
-    object_type_id = get_object_type_map()['runm.provider']
-    compute_prov_type_id = get_provider_type_map()['runm.compute']
+    compute_prov_type_id = lookup.provider_type_id_from_code('runm.compute')
     ctx.status("creating providers")
     try:
         for p in ctx.deployment_config.providers.values():
-            # Create the object lookup record
-            obj_rec = dict(
-                object_type=object_type_id,
-                uuid=p.uuid,
-                name=p.name,
-            )
-            ins = obj_tbl.insert().values(**obj_rec)
-            sess.execute(ins)
+            metadata.create_object(sess, 'runm.provider', p.uuid, p.name)
 
             # Create the base provider record
             part_id = part_ids[p.partition.uuid]
@@ -529,7 +456,7 @@ def create_providers(ctx):
                 rc_id = rc_ids[rc_code]
                 inv_rec = dict(
                     provider_id=p_id,
-                    resource_class_id=rc_id,
+                    resource_type_id=rc_id,
                     total=inv['total'],
                     reserved=inv['reserved'],
                     min_unit=inv['min_unit'],
@@ -573,9 +500,9 @@ def create_providers(ctx):
 
 def load(ctx):
     reset_db(ctx)
-    create_object_types(ctx)
+    metadata.create_object_types(ctx)
     create_provider_types(ctx)
-    create_resource_classes(ctx)
+    create_resource_types(ctx)
     create_consumer_types(ctx)
     create_capabilities(ctx)
     create_distances(ctx)

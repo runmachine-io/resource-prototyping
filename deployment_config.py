@@ -39,7 +39,8 @@ class DeploymentConfig(object):
         self.partitions = {}
         self._load_partitions()
         # A hashmap of provider group name to provider profile name
-        self.group_provider_profiles = config_dict['group_provider_profiles']
+        g_profiles = config_dict.get('group_provider_profiles', {})
+        self.group_provider_profiles = g_profiles
         # A hashmap of provider group name to provider group object
         self.provider_groups = {}
         self._load_provider_groups()

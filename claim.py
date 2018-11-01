@@ -3,24 +3,27 @@
 import sqlalchemy as sa
 from sqlalchemy import func
 
+import lookup
+import metadata
+import provider
 import resource_models
 
 UNLIMITED = -1
 
 
 class ResourceConstraint(object):
-    def __init__(self, resource_class, min_amount, max_amount,
+    def __init__(self, resource_type, min_amount, max_amount,
                  capability_constraint=None):
-        self.resource_class = resource_class
+        self.resource_type = resource_type
         self.min_amount = min_amount
         self.max_amount = max_amount
         self.capability_constraint = capability_constraint
 
     def __repr__(self):
         return (
-            "ResourceConstraint(resource_class=%s,min_amount=%d,"
+            "ResourceConstraint(resource_type=%s,min_amount=%d,"
             "max_amount=%d,capabilities=%s)" % (
-                self.resource_class,
+                self.resource_type,
                 self.min_amount,
                 self.max_amount,
                 self.capability_constraint,
@@ -81,12 +84,15 @@ class ClaimRequest(object):
 
 
 class Claim(object):
-    def __init__(self, allocation, alloc_item_group_map):
-        self.allocation = allocation
+    def __init__(self, claim_time, release_time, allocation_items,
+            alloc_item_group_map):
+        self.claim_time = claim_time
+        self.release_time = release_time
+        self.allocation_items = allocation_items
         self.allocation_item_to_request_groups = alloc_item_group_map
 
     def __repr__(self):
-        return "Claim(allocation=%s)" % self.allocation
+        return "Claim(allocation_items=%s)" % self.allocation_items
 
 
 def process_claim_request(ctx, claim_request):
@@ -106,12 +112,13 @@ def process_claim_request(ctx, claim_request):
             item_to_group_map[item_index] = group_index
             item_index += 1
         alloc_items.extend(group_alloc_items)
-    alloc = resource_models.Allocation(
-        claim_request.consumer, claim_request.claim_time,
-        claim_request.release_time, alloc_items,
-    )
     return [
-        Claim(alloc, item_to_group_map),
+        Claim(
+            claim_request.claim_time,
+            claim_request.release_time,
+            alloc_items,
+            item_to_group_map,
+        ),
     ]
 
 
@@ -207,17 +214,17 @@ def _process_claim_request_group(ctx, claim_request, group_index):
     alloc_items = []
 
     # Now add an allocation item for the first provider that is in the
-    # matches set for each resource class in the constraint
+    # matches set for each resource type in the constraint
     chosen_id = iter(mctx.matches).next()
     chosen = resource_models.Provider(
         id=chosen_id,
         uuid=mctx.matches[chosen_id],
     )
     for rc_constraint in mctx.request_group.resource_constraints:
-        # Add the first provider supplying this resource class to our
+        # Add the first provider supplying this resource type to our
         # allocation
         alloc_item = resource_models.AllocationItem(
-            resource_class=rc_constraint.resource_class,
+            resource_type=rc_constraint.resource_type,
             provider=chosen,
             used=rc_constraint.max_amount,
         )
@@ -521,22 +528,22 @@ def _find_providers_with_any_caps(ctx, caps, limit=50):
     }
 
 
-def _rc_id_from_code(ctx, resource_class):
-    rc_tbl = resource_models.get_table('resource_classes')
-    sel = sa.select([rc_tbl.c.id]).where(rc_tbl.c.code == resource_class)
+def _rc_id_from_code(ctx, resource_type):
+    rc_tbl = resource_models.get_table('resource_types')
+    sel = sa.select([rc_tbl.c.id]).where(rc_tbl.c.code == resource_type)
 
     sess = resource_models.get_session()
     res = sess.execute(sel).fetchone()
     if not res:
-        raise ValueError("Could not find ID for resource class %s" %
-                         resource_class)
+        raise ValueError("Could not find ID for resource type %s" %
+                         resource_type)
     return res[0]
 
 
 def _find_providers_with_resource(ctx, claim_time, release_time,
         resource_constraint, exclude=None, limit=50):
     """Queries for providers that have capacity for the requested amount of a
-    resource class and optionally meet resource-specific capability
+    resource type and optionally meet resource-specific capability
     constraints. The query is done in a claim start/end window.
 
     The SQL generated for a resource constraint without the optional capability
@@ -552,15 +559,15 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
       JOIN (
         SELECT id AS allocation_id
         FROM allocations
-        WHERE claim_time >= $CLAIM_START
-        AND release_time < $CLAIM_END
+        WHERE start_time >= $CLAIM_START
+        AND end_time < $CLAIM_END
         GROUP BY id
       ) AS allocs_in_window
         ON ai.allocation_id = allocs_in_window
-      WHERE ai.resource_class_id = $RESOURCE_CLASS
+      WHERE ai.resource_type_id = $RESOURCE_CLASS
     ) AS usages
       ON i.provider_id = usages.provider_id
-    WHERE i.resource_class_id = $RESOURCE_CLASS
+    WHERE i.resource_type_id = $RESOURCE_CLASS
     AND ((i.total - i.reserved) * i.allocation_ratio) >=
          $RESOURCE_REQUEST_AMOUNT + COALESCE(usages.used, 0))
 
@@ -578,14 +585,14 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
     alloc_tbl = resource_models.get_table('allocations')
     alloc_item_tbl = resource_models.get_table('allocation_items')
 
-    rc_id = _rc_id_from_code(ctx, resource_constraint.resource_class)
+    rc_id = _rc_id_from_code(ctx, resource_constraint.resource_type)
     alloc_window_cols = [
         alloc_tbl.c.id.label('allocation_id'),
     ]
     allocs_in_window_subq = sa.select(alloc_window_cols).where(
         sa.and_(
-            alloc_tbl.c.claim_time >= claim_time,
-            alloc_tbl.c.release_time < release_time,
+            alloc_tbl.c.start_time >= claim_time,
+            alloc_tbl.c.end_time < release_time,
         )
     ).group_by(alloc_tbl.c.id)
     allocs_in_window_subq = sa.alias(allocs_in_window_subq, "allocs_in_window")
@@ -600,7 +607,7 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
     usage_subq = sa.select(usage_cols).select_from(
         alloc_item_to_alloc_window
     ).where(
-        alloc_item_tbl.c.resource_class_id == rc_id
+        alloc_item_tbl.c.resource_type_id == rc_id
     ).group_by(
         alloc_item_tbl.c.provider_id
     )
@@ -615,7 +622,7 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
         join_to, inv_tbl,
         sa.and_(
             p_tbl.c.id == inv_tbl.c.provider_id,
-            inv_tbl.c.resource_class_id == rc_id,
+            inv_tbl.c.resource_type_id == rc_id,
         )
     )
     inv_to_usage = sa.outerjoin(
@@ -630,7 +637,7 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
         inv_to_usage
     ).where(
         sa.and_(
-            inv_tbl.c.resource_class_id == rc_id,
+            inv_tbl.c.resource_type_id == rc_id,
             ((inv_tbl.c.total - inv_tbl.c.reserved)
                 * inv_tbl.c.allocation_ratio)
             >= (resource_constraint.max_amount + func.coalesce(usage_subq.c.total_used, 0)))
@@ -731,3 +738,110 @@ def _select_add_capability_constraint(ctx, relation, constraint):
             sa.and_(conds),
         )
     return relation
+
+
+def _ensure_consumer(sess, consumer):
+    """Creates a record of the supplied consumer in the database and sets the
+    consumer's internal id attribute.
+    """
+    if consumer.id is not None:
+        return
+
+    c_tbl = resource_models.get_table('consumers')
+
+    cols = [
+        c_tbl.c.id,
+        c_tbl.c.uuid,
+        c_tbl.c.owner_project_uuid,
+        c_tbl.c.owner_user_uuid,
+    ]
+    sel = sa.select(cols).where(c_tbl.c.uuid == consumer.uuid)
+
+    res = sess.execute(sel).fetchone()
+    if not res:
+        metadata.create_object(
+            sess, 'runm.machine', consumer.uuid, consumer.name)
+
+        type_id = lookup.consumer_type_id_from_code('runm.machine')
+        ins = c_tbl.insert().values(
+            uuid=consumer.uuid,
+            type_id=type_id,
+            owner_project_uuid=consumer.project,
+            owner_user_uuid=consumer.user,
+            generation=1,
+        )
+        res = sess.execute(ins)
+        if res.rowcount == 1:
+            c_id = res.inserted_primary_key[0]
+            consumer.id = c_id
+        # NOTE(jaypipes): Deliberately not committing, as this is done as part
+        # of the overall claim execution transaction.
+    else:
+        consumer.id = res['id']
+
+
+def _create_allocation(sess, consumer, claim):
+    """Creates the primary allocation table record and returns the internal ID
+    of the created allocation.
+    """
+
+    alloc_tbl = resource_models.get_table('allocations')
+
+    ins = alloc_tbl.insert().values(
+        consumer_id=consumer.id,
+        start_time=claim.claim_time,
+        end_time=claim.release_time,
+    )
+    res = sess.execute(ins)
+    if res.rowcount != 1:
+        raise Exception(
+            "Expected to write a single row for allocation. Wrote %d rows" %
+            res.rowcount)
+    # NOTE(jaypipes): Deliberately not committing, as this is done as part of
+    # the overall claim execution transaction.
+    return res.inserted_primary_key[0]
+
+
+
+def execute(ctx, consumer, claim):
+    """Given a Claim object, attempt to acquire the resources listed in the
+    claim. Returns None on successful execution, otherwise raises an exception
+    indicating what went wrong.
+    """
+    p_tbl = resource_models.get_table('providers')
+    alloc_items_tbl = resource_models.get_table('allocation_items')
+
+    sess = resource_models.get_session()
+
+    # TODO(jaypipes): Before we start, grab the provider internal ID and
+    # generation for each provider involved in our allocation items. We'll use
+    # these generations at the end of the claim execution process as a
+    # safety-check to determine if any of the involved providers were allocated
+    # against by another thread during our claim execution process. If so,
+    # we'll simply re-try the operation, verifying that the providers still
+    # have capacity for the amounts of resources we're allocating in our claim.
+    # provider_uuids = set(
+    #    alloc_item.provider.uuid for alloc_item in claim.allocation_items
+    #)
+
+    # a dict, keyed by provider UUID, of Provider objects.
+    #provider_map = provider.providers_by_uuids(provider_uuids)
+
+    _ensure_consumer(sess, consumer)
+    alloc_id = _create_allocation(sess, consumer, claim)
+
+    # Create each allocation item contained in the claim's list of
+    # allocation items
+    item_values = [
+        {
+            'allocation_id': alloc_id,
+            'provider_id': alloc_item.provider.id,
+            'resource_type_id': lookup.resource_type_id_from_code(
+                alloc_item.resource_type),
+            'used': alloc_item.used,
+        }
+        for alloc_item in claim.allocation_items
+    ]
+    ins = alloc_items_tbl.insert()
+    sess.execute(ins, item_values)
+    sess.commit()

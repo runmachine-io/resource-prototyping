@@ -25,7 +25,7 @@ _TABLE_NAMES = (
     'provider_trees',
     'provider_types',
     'providers',
-    'resource_classes',
+    'resource_types',
 )
 _TABLES = {}
 
@@ -114,11 +114,12 @@ class Partition(object):
 
 
 class Provider(object):
-    def __init__(self, name=None, partition=None, groups=None, profile=None, id=None, uuid=None):
+    def __init__(self, name=None, partition=None, groups=None, profile=None, id=None, uuid=None, generation=None):
         self.id = id
         self.name = name
         self.partition = partition
         self.uuid = uuid or str(uuidlib.uuid4()).replace('-', '')
+        self.generation = generation
         # Collection of provider group objects this provider is in
         self.groups = groups
         self.profile = profile
@@ -154,10 +155,11 @@ class Provider(object):
 
 class Consumer(object):
     def __init__(self, name, uuid=None, project=None, user=None):
+        self.id = None
         self.name = name
         self.uuid = uuid or str(uuidlib.uuid4()).replace('-', '')
-        self.project = project
-        self.user = user
+        self.project = project or str(uuidlib.uuid4()).replace('-', '')
+        self.user = user or str(uuidlib.uuid4()).replace('-', '')
 
     def __repr__(self):
         uuid_str = ""
@@ -178,15 +180,15 @@ class Consumer(object):
 
 
 class AllocationItem(object):
-    def __init__(self, provider, resource_class, used):
+    def __init__(self, provider, resource_type, used):
         self.provider = provider
-        self.resource_class = resource_class
+        self.resource_type = resource_type
         self.used = used
 
     def __repr__(self):
-        return "\n\t\tAllocationItem(provider=%s,resource_class=%s,used=%d)" % (
+        return "\n\t\tAllocationItem(provider=%s,resource_type=%s,used=%d)" % (
             self.provider,
-            self.resource_class,
+            self.resource_type,
             self.used,
         )
 

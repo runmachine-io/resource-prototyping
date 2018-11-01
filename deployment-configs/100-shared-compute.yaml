@@ -1,0 +1,7 @@
+default_provider_profile: 24cpu-128G-1T-intel-hdd-shared
+layout:
+  sites:
+    - east
+  rows_per_site: 1
+  racks_per_row: 4
+  nodes_per_rack: 25

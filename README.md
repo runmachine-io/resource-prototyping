@@ -94,7 +94,7 @@ loading deployment config ... ok
 resetting resource PoC database ... ok
 creating object types ... ok
 creating provider types ... ok
-creating resource classes ... ok
+creating resource types ... ok
 creating consumer types ... ok
 creating capabilities ... ok
 creating distance types ... ok
@@ -102,7 +102,7 @@ creating distances ... ok
 creating partitions ... ok
 creating provider groups ... ok
 caching provider group internal IDs ... ok
-caching resource class and capability internal IDs ... ok
+caching resource type and capability internal IDs ... ok
 caching partition, distance type and distance internal IDs ... ok
 creating providers ... ok
 loading claim config ... ok
@@ -111,7 +111,7 @@ Found 50 providers with capacity for 67108864 runm.memory
 Found 50 providers with capacity for 1 runm.cpu.shared
 Claim(allocation=
     Allocation(consumer=Consumer(name=instance0,uuid=e8495d7172714de0a0106e6a4c4927f7),claim_time=1540490434,release_time=9223372036854775807,items=[
-        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_class=runm.block_storage,used=1000000000),
-        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_class=runm.memory,used=67108864),
-        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_class=runm.cpu.shared,used=1)]))
+        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_type=runm.block_storage,used=1000000000),
+        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_type=runm.memory,used=67108864),
+        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_type=runm.cpu.shared,used=1)]))
 ```

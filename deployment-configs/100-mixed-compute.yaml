@@ -1,0 +1,11 @@
+default_provider_profile: 24cpu-128G-1T-intel-hdd-shared
+layout:
+  sites:
+    - east
+  rows_per_site: 1
+  racks_per_row: 4
+  nodes_per_rack: 25
+group_provider_profiles:
+  # Within the site, there is one rack in one row that contains dedicated
+  # compute. All other machines are shared compute
+  east-row1-rack1: 12cpu-64G-4T-ssd-dedicated
