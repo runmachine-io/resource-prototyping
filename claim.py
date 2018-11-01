@@ -802,7 +802,6 @@ def _create_allocation(sess, consumer, claim):
     return res.inserted_primary_key[0]
 
 
-
 def execute(ctx, consumer, claim):
     """Given a Claim object, attempt to acquire the resources listed in the
     claim. Returns None on successful execution, otherwise raises an exception
@@ -820,12 +819,12 @@ def execute(ctx, consumer, claim):
     # against by another thread during our claim execution process. If so,
     # we'll simply re-try the operation, verifying that the providers still
     # have capacity for the amounts of resources we're allocating in our claim.
-    # provider_uuids = set(
-    #    alloc_item.provider.uuid for alloc_item in claim.allocation_items
-    #)
+    provider_uuids = set(
+       alloc_item.provider.uuid for alloc_item in claim.allocation_items
+    )
 
     # a dict, keyed by provider UUID, of Provider objects.
-    #provider_map = provider.providers_by_uuids(provider_uuids)
+    provider_map = provider.providers_by_uuids(provider_uuids)
 
     _ensure_consumer(sess, consumer)
     alloc_id = _create_allocation(sess, consumer, claim)
@@ -844,4 +843,11 @@ def execute(ctx, consumer, claim):
     ]
     ins = alloc_items_tbl.insert()
     sess.execute(ins, item_values)
+
+    # increment the provider generations, ensuring that the providers involved
+    # in our allocation did not change in between the time we read their
+    # generations above and here.
+    for p in provider_map.values():
+        provider.increment_generation(sess, p)
+
     sess.commit()
