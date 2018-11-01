@@ -34,9 +34,9 @@ def reset_db(ctx):
     ctx.status_ok()
 
 
-def create_resource_classes(ctx):
-    ctx.status("creating resource classes")
-    tbl = resource_models.get_table('resource_classes')
+def create_resource_types(ctx):
+    ctx.status("creating resource types")
+    tbl = resource_models.get_table('resource_types')
 
     recs = [
         dict(
@@ -325,7 +325,7 @@ def create_provider_groups(ctx):
 
 
 def create_providers(ctx):
-    rc_tbl = resource_models.get_table('resource_classes')
+    rc_tbl = resource_models.get_table('resource_types')
     cap_tbl = resource_models.get_table('capabilities')
     part_tbl = resource_models.get_table('partitions')
     pg_tbl = resource_models.get_table('provider_groups')
@@ -342,7 +342,7 @@ def create_providers(ctx):
     part_ids = {}
     # in-process cache of provider group name -> internal ID
     pg_ids = {}
-    # in-process cache of resource class code -> internal ID
+    # in-process cache of resource type code -> internal ID
     rc_ids = {}
     # in-process cache of capability code -> internal ID
     cap_ids = {}
@@ -363,7 +363,7 @@ def create_providers(ctx):
             pg_ids[pg.uuid] = res[0]
     ctx.status_ok()
 
-    ctx.status("caching resource class and capability internal IDs")
+    ctx.status("caching resource type and capability internal IDs")
     for prof in ctx.deployment_config.provider_profiles.values():
         for rc_code in prof.inventory.keys():
             if rc_code not in rc_ids:
@@ -457,7 +457,7 @@ def create_providers(ctx):
                 rc_id = rc_ids[rc_code]
                 inv_rec = dict(
                     provider_id=p_id,
-                    resource_class_id=rc_id,
+                    resource_type_id=rc_id,
                     total=inv['total'],
                     reserved=inv['reserved'],
                     min_unit=inv['min_unit'],
@@ -503,7 +503,7 @@ def load(ctx):
     reset_db(ctx)
     metadata.create_object_types(ctx)
     create_provider_types(ctx)
-    create_resource_classes(ctx)
+    create_resource_types(ctx)
     create_consumer_types(ctx)
     create_capabilities(ctx)
     create_distances(ctx)

@@ -25,7 +25,7 @@ _TABLE_NAMES = (
     'provider_trees',
     'provider_types',
     'providers',
-    'resource_classes',
+    'resource_types',
 )
 _TABLES = {}
 
@@ -178,15 +178,15 @@ class Consumer(object):
 
 
 class AllocationItem(object):
-    def __init__(self, provider, resource_class, used):
+    def __init__(self, provider, resource_type, used):
         self.provider = provider
-        self.resource_class = resource_class
+        self.resource_type = resource_type
         self.used = used
 
     def __repr__(self):
-        return "\n\t\tAllocationItem(provider=%s,resource_class=%s,used=%d)" % (
+        return "\n\t\tAllocationItem(provider=%s,resource_type=%s,used=%d)" % (
             self.provider,
-            self.resource_class,
+            self.resource_type,
             self.used,
         )
 

@@ -9,18 +9,18 @@ UNLIMITED = -1
 
 
 class ResourceConstraint(object):
-    def __init__(self, resource_class, min_amount, max_amount,
+    def __init__(self, resource_type, min_amount, max_amount,
                  capability_constraint=None):
-        self.resource_class = resource_class
+        self.resource_type = resource_type
         self.min_amount = min_amount
         self.max_amount = max_amount
         self.capability_constraint = capability_constraint
 
     def __repr__(self):
         return (
-            "ResourceConstraint(resource_class=%s,min_amount=%d,"
+            "ResourceConstraint(resource_type=%s,min_amount=%d,"
             "max_amount=%d,capabilities=%s)" % (
-                self.resource_class,
+                self.resource_type,
                 self.min_amount,
                 self.max_amount,
                 self.capability_constraint,
@@ -207,17 +207,17 @@ def _process_claim_request_group(ctx, claim_request, group_index):
     alloc_items = []
 
     # Now add an allocation item for the first provider that is in the
-    # matches set for each resource class in the constraint
+    # matches set for each resource type in the constraint
     chosen_id = iter(mctx.matches).next()
     chosen = resource_models.Provider(
         id=chosen_id,
         uuid=mctx.matches[chosen_id],
     )
     for rc_constraint in mctx.request_group.resource_constraints:
-        # Add the first provider supplying this resource class to our
+        # Add the first provider supplying this resource type to our
         # allocation
         alloc_item = resource_models.AllocationItem(
-            resource_class=rc_constraint.resource_class,
+            resource_type=rc_constraint.resource_type,
             provider=chosen,
             used=rc_constraint.max_amount,
         )
@@ -521,22 +521,22 @@ def _find_providers_with_any_caps(ctx, caps, limit=50):
     }
 
 
-def _rc_id_from_code(ctx, resource_class):
-    rc_tbl = resource_models.get_table('resource_classes')
-    sel = sa.select([rc_tbl.c.id]).where(rc_tbl.c.code == resource_class)
+def _rc_id_from_code(ctx, resource_type):
+    rc_tbl = resource_models.get_table('resource_types')
+    sel = sa.select([rc_tbl.c.id]).where(rc_tbl.c.code == resource_type)
 
     sess = resource_models.get_session()
     res = sess.execute(sel).fetchone()
     if not res:
-        raise ValueError("Could not find ID for resource class %s" %
-                         resource_class)
+        raise ValueError("Could not find ID for resource type %s" %
+                         resource_type)
     return res[0]
 
 
 def _find_providers_with_resource(ctx, claim_time, release_time,
         resource_constraint, exclude=None, limit=50):
     """Queries for providers that have capacity for the requested amount of a
-    resource class and optionally meet resource-specific capability
+    resource type and optionally meet resource-specific capability
     constraints. The query is done in a claim start/end window.
 
     The SQL generated for a resource constraint without the optional capability
@@ -557,10 +557,10 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
         GROUP BY id
       ) AS allocs_in_window
         ON ai.allocation_id = allocs_in_window
-      WHERE ai.resource_class_id = $RESOURCE_CLASS
+      WHERE ai.resource_type_id = $RESOURCE_CLASS
     ) AS usages
       ON i.provider_id = usages.provider_id
-    WHERE i.resource_class_id = $RESOURCE_CLASS
+    WHERE i.resource_type_id = $RESOURCE_CLASS
     AND ((i.total - i.reserved) * i.allocation_ratio) >=
          $RESOURCE_REQUEST_AMOUNT + COALESCE(usages.used, 0))
 
@@ -578,7 +578,7 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
     alloc_tbl = resource_models.get_table('allocations')
     alloc_item_tbl = resource_models.get_table('allocation_items')
 
-    rc_id = _rc_id_from_code(ctx, resource_constraint.resource_class)
+    rc_id = _rc_id_from_code(ctx, resource_constraint.resource_type)
     alloc_window_cols = [
         alloc_tbl.c.id.label('allocation_id'),
     ]
@@ -600,7 +600,7 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
     usage_subq = sa.select(usage_cols).select_from(
         alloc_item_to_alloc_window
     ).where(
-        alloc_item_tbl.c.resource_class_id == rc_id
+        alloc_item_tbl.c.resource_type_id == rc_id
     ).group_by(
         alloc_item_tbl.c.provider_id
     )
@@ -615,7 +615,7 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
         join_to, inv_tbl,
         sa.and_(
             p_tbl.c.id == inv_tbl.c.provider_id,
-            inv_tbl.c.resource_class_id == rc_id,
+            inv_tbl.c.resource_type_id == rc_id,
         )
     )
     inv_to_usage = sa.outerjoin(
@@ -630,7 +630,7 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
         inv_to_usage
     ).where(
         sa.and_(
-            inv_tbl.c.resource_class_id == rc_id,
+            inv_tbl.c.resource_type_id == rc_id,
             ((inv_tbl.c.total - inv_tbl.c.reserved)
                 * inv_tbl.c.allocation_ratio)
             >= (resource_constraint.max_amount + func.coalesce(usage_subq.c.total_used, 0)))

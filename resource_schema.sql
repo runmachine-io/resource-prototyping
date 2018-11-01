@@ -27,7 +27,7 @@ CREATE TABLE partitions (
 , UNIQUE INDEX uix_uuid (uuid)
 ) CHARACTER SET latin1 COLLATE latin1_bin;
 
-CREATE TABLE resource_classes (
+CREATE TABLE resource_types (
   id INT NOT NULL AUTO_INCREMENT PRIMARY KEY
 , code VARCHAR(200) NOT NULL
 , description TEXT CHARACTER SET utf8 COLLATE utf8_bin NULL
@@ -97,15 +97,15 @@ CREATE TABLE provider_capabilities (
 CREATE TABLE inventories (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY
 , provider_id BIGINT NOT NULL
-, resource_class_id INT NOT NULL
+, resource_type_id INT NOT NULL
 , total BIGINT UNSIGNED NOT NULL
 , reserved BIGINT UNSIGNED NOT NULL
 , min_unit BIGINT UNSIGNED NOT NULL
 , max_unit BIGINT UNSIGNED NOT NULL
 , step_size BIGINT UNSIGNED NOT NULL
 , allocation_ratio FLOAT NOT NULL
-, UNIQUE INDEX uix_provider_resource_class (provider_id, resource_class_id)
-, INDEX ix_resource_class_total (resource_class_id, total)
+, UNIQUE INDEX uix_provider_resource_type (provider_id, resource_type_id)
+, INDEX ix_resource_type_total (resource_type_id, total)
 ) CHARACTER SET latin1 COLLATE latin1_bin;
 
 CREATE TABLE provider_groups (
@@ -166,14 +166,14 @@ CREATE TABLE allocation_items (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY
 , allocation_id BIGINT NOT NULL
 , provider_id BIGINT NOT NULL
-, resource_class_id INT NOT NULL
+, resource_type_id INT NOT NULL
 , used BIGINT UNSIGNED NOT NULL
-, INDEX ix_allocation_provider_resource_class (
+, INDEX ix_allocation_provider_resource_type (
     allocation_id
   , provider_id
-  , resource_class_id)
-, INDEX ix_resource_class_provider_allocation (
-    resource_class_id
+  , resource_type_id)
+, INDEX ix_resource_type_provider_allocation (
+    resource_type_id
   , provider_id
   , allocation_id)
 ) CHARACTER SET latin1 COLLATE latin1_bin;
