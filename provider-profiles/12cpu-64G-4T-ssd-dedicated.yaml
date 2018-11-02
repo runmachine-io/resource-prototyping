@@ -22,6 +22,6 @@ inventory:
     total: 4000000000000
     allocation_ratio: 1.0
     # 10GB
-    min_unit: 10000000000
+    min_unit: 1000000000
     # 50GB
-    step_size: 10000000000
+    step_size: 1000000000
