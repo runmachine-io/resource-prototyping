@@ -1024,13 +1024,13 @@ def execute(ctx, consumer_obj, claim):
 
     sess = resource_models.get_session()
 
-    # TODO(jaypipes): Before we start, grab the provider internal ID and
-    # generation for each provider involved in our allocation items. We'll use
-    # these generations at the end of the claim execution process as a
-    # safety-check to determine if any of the involved providers were allocated
-    # against by another thread during our claim execution process. If so,
-    # we'll simply re-try the operation, verifying that the providers still
-    # have capacity for the amounts of resources we're allocating in our claim.
+    # Before we start, grab the provider internal ID and generation for each
+    # provider involved in our allocation items. We'll use these generations at
+    # the end of the claim execution process as a safety-check to determine if
+    # any of the involved providers were allocated against by another thread
+    # during our claim execution process. If so, we'll simply re-try the
+    # operation, verifying that the providers still have capacity for the
+    # amounts of resources we're allocating in our claim.
     provider_map = _check_provider_capacity(sess, claim)
 
     consumer.create_if_not_exists(sess, consumer_obj)
