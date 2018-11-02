@@ -11,7 +11,7 @@ varying scales (of deployment size).
 We test the data model and schema in Python because it's quick and easy to
 prototype things and run tests. We're not interested in comparing the raw speed
 of Golang versus Python. Rather, we're simply interested in quickly loading up
-a DB with varying scale scenarios, running claim and placement tests aghainst
+a DB with varying scale scenarios, running claim and placement tests against
 that DB, and tearing it all down.
 
 We use MySQL for the tests, though there's nothing preventing the use of
