@@ -154,10 +154,10 @@ CREATE TABLE consumers (
 CREATE TABLE allocations (
   id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY
 , consumer_id BIGINT NOT NULL
-, start_time BIGINT NOT NULL
-, end_time BIGINT NOT NULL
-, INDEX ix_consumer_window (consumer_id, start_time, end_time)
-, INDEX ix_window (start_time, end_time)
+, acquire_time BIGINT NOT NULL
+, release_time BIGINT NOT NULL
+, INDEX ix_consumer_window (consumer_id, acquire_time, release_time)
+, INDEX ix_window (acquire_time, release_time)
 ) CHARACTER SET latin1 COLLATE latin1_bin;
 
 CREATE TABLE allocation_items (
