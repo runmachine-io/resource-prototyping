@@ -560,8 +560,8 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
       JOIN (
         SELECT id AS allocation_id
         FROM allocations
-        WHERE start_time >= $CLAIM_START
-        AND end_time < $CLAIM_END
+        WHERE acquire_time >= $CLAIM_START
+        AND release_time < $CLAIM_END
         GROUP BY id
       ) AS allocs_in_window
         ON ai.allocation_id = allocs_in_window
@@ -592,8 +592,8 @@ def _find_providers_with_resource(ctx, claim_time, release_time,
     ]
     allocs_in_window_subq = sa.select(alloc_window_cols).where(
         sa.and_(
-            alloc_tbl.c.start_time >= claim_time,
-            alloc_tbl.c.end_time < release_time,
+            alloc_tbl.c.acquire_time >= claim_time,
+            alloc_tbl.c.release_time < release_time,
         )
     ).group_by(alloc_tbl.c.id)
     allocs_in_window_subq = sa.alias(allocs_in_window_subq, "allocs_in_window")
@@ -750,8 +750,8 @@ def _create_allocation(sess, consumer, claim):
 
     ins = alloc_tbl.insert().values(
         consumer_id=consumer.id,
-        start_time=claim.claim_time,
-        end_time=claim.release_time,
+        acquire_time=claim.claim_time,
+        release_time=claim.release_time,
     )
     res = sess.execute(ins)
     if res.rowcount != 1:
