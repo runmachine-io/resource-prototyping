@@ -52,7 +52,7 @@ def create_resource_types(ctx):
                         "CPUs"
         ),
         dict(code='runm.memory', description='Bytes of RAM'),
-        dict(code='runm.block_storage', description='Bytes of block storage'),
+        dict(code='runm.storage.block', description='Bytes of block storage'),
         dict(code='runm.gpu.virtual', description='virtual GPU context'),
     ]
     try:

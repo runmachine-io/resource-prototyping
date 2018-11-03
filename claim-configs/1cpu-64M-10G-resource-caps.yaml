@@ -10,7 +10,7 @@ request_groups:
         # 64M
         min: 67108864
         max: 67108864
-      runm.block_storage:
+      runm.storage.block:
         # 10GB
         min: 1000000000
         max: 1000000000

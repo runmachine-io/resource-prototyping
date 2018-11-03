@@ -17,7 +17,7 @@ inventory:
     max_unit: 68719476736
     # 64MiB
     step_size: 67108864
-  runm.block_storage:
+  runm.storage.block:
     # 4000GB
     total: 4000000000000
     allocation_ratio: 1.0
