@@ -352,17 +352,6 @@ def _process_resource_constraints(ctx, mctx):
     return True
 
 
-def _cap_id_from_code(ctx, cap):
-    cap_tbl = db.get_table('capabilities')
-    sel = sa.select([cap_tbl.c.id]).where(cap_tbl.c.code == cap)
-
-    sess = db.get_session()
-    res = sess.execute(sel).fetchone()
-    if not res:
-        raise ValueError("Could not find ID for capability %s" % cap)
-    return res[0]
-
-
 def _find_providers_with_all_caps(ctx, caps, limit=50):
     """Returns providers that have all of the supplied capabilities.
 
@@ -380,7 +369,7 @@ def _find_providers_with_all_caps(ctx, caps, limit=50):
     p_caps_tbl = db.get_table('provider_capabilities')
 
     cap_ids = [
-        _cap_id_from_code(ctx, cap) for cap in caps
+        lookup.capability_id_from_code(cap) for cap in caps
     ]
 
     p_to_p_caps = sa.join(
@@ -423,7 +412,7 @@ def _find_providers_with_any_caps(ctx, caps, limit=50):
     p_caps_tbl = db.get_table('provider_capabilities')
 
     cap_ids = [
-        _cap_id_from_code(ctx, cap) for cap in caps
+        lookup.capability_id_from_code(cap) for cap in caps
     ]
 
     p_to_p_caps = sa.join(
@@ -610,7 +599,7 @@ def _select_add_capability_constraint(ctx, relation, constraint):
     p_caps_tbl = sa.alias(p_caps_tbl, name='pc')
     if constraint.require_caps:
         if len(constraint.require_caps) == 1:
-            cap_id = _cap_id_from_code(ctx, constraint.require_caps[0])
+            cap_id = lookup.capability_id_from_code(constraint.require_caps[0])
             # Just join to placement_capabilities and be done with it. No need
             # to get more complicated than that.
             relation = sa.join(
@@ -625,7 +614,8 @@ def _select_add_capability_constraint(ctx, relation, constraint):
             # representing the providers that have ALL of the required
             # capabilities.
             require_cap_ids = [
-                _cap_id_from_code(ctx, cap) for cap in constraint.require_caps
+                lookup.capability_id_from_code(cap)
+                for cap in constraint.require_caps
             ]
             cols = [
                 p_caps_tbl.c.provider_id,
@@ -648,14 +638,16 @@ def _select_add_capability_constraint(ctx, relation, constraint):
         ]
         if constraint.forbid_caps:
             forbid_cap_ids = [
-                _cap_id_from_code(ctx, cap) for cap in constraint.forbid_caps
+                lookup.capability_id_from_code(cap)
+                for cap in constraint.forbid_caps
             ]
             conds.append(
                 ~p_caps_tbl.c.capability_id.in_(forbid_cap_ds)
             )
         if constraint.any_caps:
             any_cap_ids = [
-                _cap_id_from_code(ctx, cap) for cap in constraint.any_caps
+                lookup.capability_id_from_code(cap)
+                for cap in constraint.any_caps
             ]
             conds.append(
                 p_caps_tbl.c.capability_id.in_(any_cap_ds)

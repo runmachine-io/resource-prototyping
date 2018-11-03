@@ -10,6 +10,7 @@ import models
 _PROVIDER_TYPE_MAP = None
 _CONSUMER_TYPE_MAP = None
 _RESOURCE_TYPE_MAP = None
+_CAPABILITIES_MAP = None
 
 def _get_provider_type_map():
     """Returns a dict, keyed by provider type string code, of internal provider
@@ -63,3 +64,21 @@ def _get_resource_type_map():
 
 def resource_type_id_from_code(code):
     return _get_resource_type_map()[code]
+
+
+def _get_capability_map():
+    """Returns a dict, keyed by capability string code, of internal capability
+    ID.
+    """
+    global _CAPABILITY_MAP
+    if _CAPABILITY_MAP is not None:
+        return _CAPABILITY_MAP
+    tbl = db.get_table('capabilities')
+    sel = sa.select([tbl.c.id, tbl.c.code])
+    sess = db.get_session()
+    _CAPABILITY_MAP = {r[1]: r[0] for r in sess.execute(sel)}
+    return _CAPABILITY_MAP
+
+
+def capability_id_from_code(code):
+    return _get_capability_map()[code]
