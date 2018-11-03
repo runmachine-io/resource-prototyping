@@ -79,7 +79,7 @@ def find_claims(ctx, consumer):
     claim_time = datetime.datetime.utcnow()
     claim_time = int(time.mktime(claim_time.timetuple()))
     release_time = sys.maxint
-    cr = claim.ClaimRequest(
+    cr = models.ClaimRequest(
         consumer, ctx.claim_config.claim_request_groups, claim_time,
         release_time)
     claims = claim.process_claim_request(ctx, cr)

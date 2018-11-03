@@ -14,96 +14,12 @@ import provider
 UNLIMITED = -1
 
 
-class ResourceConstraint(object):
-    def __init__(self, resource_type, min_amount, max_amount,
-                 capability_constraint=None):
-        self.resource_type = resource_type
-        self.min_amount = min_amount
-        self.max_amount = max_amount
-        self.capability_constraint = capability_constraint
-
-    def __repr__(self):
-        return (
-            "ResourceConstraint(resource_type=%s,min_amount=%d,"
-            "max_amount=%d,capabilities=%s)" % (
-                self.resource_type,
-                self.min_amount,
-                self.max_amount,
-                self.capability_constraint,
-            )
-        )
-
-
-class CapabilityConstraint(object):
-    def __init__(self, require_caps=None, forbid_caps=None, any_caps=None):
-        self.require_caps = require_caps
-        self.forbid_caps = forbid_caps
-        self.any_caps = any_caps
-
-    def __repr__(self):
-        return "CapabilityConstraint(require=%s,forbid=%s,any=%s)" % (
-            self.require_caps, self.forbid_caps, self.any_caps,
-        )
-
-
-class ProviderGroupConstraint(object):
-    def __init__(self, require_groups, forbid_groups, any_groups):
-        self.require_groups = require_groups
-        self.forbid_groups = forbid_groups
-        self.any_groups = any_groups
-
-
-class DistanceConstraint(object):
-    def __init__(self, provider, minimum=None, maximum=None):
-        self.provider = provider
-        self.minimum = minimum
-        self.maximum = maximum
-
-
-class ClaimRequestGroupOptions(object):
-    def __init__(self, single_provider=True, isolate_from=None):
-        self.single_provider = single_provider
-        self.isolate_from = isolate_from
-
-
-class ClaimRequestGroup(object):
-    def __init__(self, options=None, resource_constraints=None,
-            capability_constraints=None, provider_group_constraints=None,
-            distance_constraints=None):
-        self.options = options or ClaimRequestGroupOptions()
-        self.resource_constraints = resource_constraints
-        self.capability_constraints = capability_constraints
-        self.provider_group_constraints = provider_group_constraints
-        self.distance_constraints = distance_constraints
-
-
-class ClaimRequest(object):
-    def __init__(self, consumer, request_groups, acquire_time=None,
-            release_time=None):
-        self.consumer = consumer
-        self.request_groups = request_groups
-        self.acquire_time = acquire_time
-        self.release_time = release_time
-
-
-class Claim(object):
-    def __init__(self, acquire_time, release_time, allocation_items,
-            alloc_item_group_map):
-        self.acquire_time = acquire_time
-        self.release_time = release_time
-        self.allocation_items = allocation_items
-        self.allocation_item_to_request_groups = alloc_item_group_map
-
-    def __repr__(self):
-        return "Claim(allocation_items=%s)" % self.allocation_items
-
-
 def process_claim_request(ctx, claim_request):
     """Given a claim request object, ask the resource database to construct
-    Claim objects that meet the request's constraints.
+    models.Claim objects that meet the request's constraints.
 
     :param ctx: the RunContext object
-    :param claim_request: the ClaimRequest object
+    :param claim_request: the models.ClaimRequest object
     """
     alloc_items = []
     item_to_group_map = {}
@@ -116,7 +32,7 @@ def process_claim_request(ctx, claim_request):
             item_index += 1
         alloc_items.extend(group_alloc_items)
     return [
-        Claim(
+        models.Claim(
             claim_request.acquire_time,
             claim_request.release_time,
             alloc_items,
@@ -137,7 +53,7 @@ class MatchContext(object):
         # providers, this is set to True
         self.started_filtering = False
 
-        # The ClaimRequestGroup being tracked
+        # The models.ClaimRequestGroup being tracked
         self.request_group = claim_request.request_groups[group_index]
 
         # dict, keyd by internal provider ID, of provider UUIDs that have
@@ -196,8 +112,8 @@ class MatchContext(object):
 
 def _process_claim_request_group(ctx, claim_request, group_index):
     """Given an index to a single claim request group, returns a list of
-    AllocationItem objects that would be satisfied by the request group after
-    determining the providers matching the request group's constraints.
+    models.AllocationItem objects that would be satisfied by the request group
+    after determining the providers matching the request group's constraints.
     """
     mctx = MatchContext(claim_request, group_index)
 
@@ -772,29 +688,9 @@ def _create_allocation(sess, consumer, claim):
     return res.inserted_primary_key[0]
 
 
-class Usage(object):
-    def __init__(self, total, reserved, min_unit, max_unit, step_size,
-        allocation_ratio, total_used):
-        self.total = total
-        self.reserved = reserved
-        self.min_unit = min_unit
-        self.max_unit = max_unit
-        self.step_size = step_size
-        self.allocation_ratio = allocation_ratio
-        self.total_used = total_used
-
-
-class ProviderUsages(object):
-    def __init__(self, provider):
-        self.provider = provider
-        # usages is a dict, keyed by resource type internal ID, of Usage
-        # objects
-        self.usages = {}
-
-
 def _check_provider_capacity(sess, claim_obj):
     """Verifies that providers have capacity for all resources listed in the
-    supplied Claim object's list of allocations and returns a dict, keyed by
+    supplied models.Claim object's list of allocations and returns a dict, keyed by
     provider UUID, of Provider objects that include the provider's generation
     at the time of the capacity check.
     """
@@ -928,12 +824,12 @@ def _check_provider_capacity(sess, claim_obj):
                 uuid=rec['provider_uuid'],
                 generation=rec['provider_generation'],
             )
-            provider_usages[p_id] = ProviderUsages(provider=p_obj)
+            provider_usages[p_id] = models.ProviderUsages(provider=p_obj)
 
         rt_id = rec['resource_type_id']
         p_usage = provider_usages[p_id]
 
-        p_usage.usages[rt_id] = Usage(
+        p_usage.usages[rt_id] = models.Usage(
             total=rec['total'],
             reserved=rec['reserved'],
             min_unit=rec['min_unit'],
@@ -1024,9 +920,9 @@ def _check_provider_capacity(sess, claim_obj):
 
 
 def execute(ctx, consumer_obj, claim):
-    """Given a Consumer and Claim object, attempt to acquire the resources
-    listed in the claim. Returns None on successful execution, otherwise raises
-    an exception indicating what went wrong.
+    """Given a Consumer and models.Claim object, attempt to acquire the
+    resources listed in the claim. Returns None on successful execution,
+    otherwise raises an exception indicating what went wrong.
     """
     alloc_items_tbl = db.get_table('allocation_items')
 
