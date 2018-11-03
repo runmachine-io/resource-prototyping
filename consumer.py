@@ -2,9 +2,10 @@
 
 import sqlalchemy as sa
 
+import db
 import lookup
 import metadata
-import resource_models
+import models
 
 
 def create_if_not_exists(sess, consumer):
@@ -14,7 +15,7 @@ def create_if_not_exists(sess, consumer):
     if consumer.id is not None:
         return
 
-    c_tbl = resource_models.get_table('consumers')
+    c_tbl = db.get_table('consumers')
 
     cols = [
         c_tbl.c.id,

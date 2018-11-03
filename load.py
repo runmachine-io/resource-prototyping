@@ -6,9 +6,10 @@ import subprocess
 
 import sqlalchemy as sa
 
+import db
 import lookup
 import metadata
-import resource_models
+import models
 
 _RESOURCE_SCHEMA_FILE = os.path.join(
     os.path.abspath(os.path.dirname(__file__)), 'resource_schema.sql',
@@ -16,7 +17,7 @@ _RESOURCE_SCHEMA_FILE = os.path.join(
 
 
 def _insert_records(tbl, recs):
-    sess = resource_models.get_session()
+    sess = db.get_session()
     for rec in recs:
         ins = tbl.insert().values(**rec)
         sess.execute(ins)
@@ -36,7 +37,7 @@ def reset_db(ctx):
 
 def create_resource_types(ctx):
     ctx.status("creating resource types")
-    tbl = resource_models.get_table('resource_types')
+    tbl = db.get_table('resource_types')
 
     recs = [
         dict(
@@ -63,7 +64,7 @@ def create_resource_types(ctx):
 
 def create_provider_types(ctx):
     ctx.status("creating provider types")
-    tbl = resource_models.get_table('provider_types')
+    tbl = db.get_table('provider_types')
 
     recs = [
         dict(
@@ -89,7 +90,7 @@ def create_provider_types(ctx):
 
 def create_consumer_types(ctx):
     ctx.status("creating consumer types")
-    tbl = resource_models.get_table('consumer_types')
+    tbl = db.get_table('consumer_types')
 
     recs = [
         dict(
@@ -115,16 +116,16 @@ def get_consumer_type_map():
     global _CONSUMER_TYPE_MAP
     if _CONSUMER_TYPE_MAP is not None:
         return _CONSUMER_TYPE_MAP
-    tbl = resource_models.get_table('consumer_types')
+    tbl = db.get_table('consumer_types')
     sel = sa.select([tbl.c.id, tbl.c.code])
-    sess = resource_models.get_session()
+    sess = db.get_session()
     _CONSUMER_TYPE_MAP = {r[1]: r[0] for r in sess.execute(sel)}
     return _CONSUMER_TYPE_MAP
 
 
 def create_capabilities(ctx):
     ctx.status("creating capabilities")
-    tbl = resource_models.get_table('capabilities')
+    tbl = db.get_table('capabilities')
 
     recs = [
         dict(
@@ -157,8 +158,8 @@ def create_capabilities(ctx):
 
 def create_distances(ctx):
     ctx.status("creating distance types")
-    dt_tbl = resource_models.get_table('distance_types')
-    d_tbl = resource_models.get_table('distances')
+    dt_tbl = db.get_table('distance_types')
+    d_tbl = db.get_table('distances')
 
     recs = [
         dict(
@@ -187,7 +188,7 @@ def create_distances(ctx):
 
     ctx.status("creating distances")
 
-    sess = resource_models.get_session()
+    sess = db.get_session()
     sel = sa.select([dt_tbl.c.id]).where(dt_tbl.c.code == "network")
     net_dt_id = sess.execute(sel).fetchone()[0]
 
@@ -269,9 +270,9 @@ def create_distances(ctx):
 
 def create_partitions(ctx):
     ctx.status("creating partitions")
-    part_tbl = resource_models.get_table('partitions')
+    part_tbl = db.get_table('partitions')
 
-    sess = resource_models.get_session()
+    sess = db.get_session()
 
     created = set()
 
@@ -301,9 +302,9 @@ def create_partitions(ctx):
 
 def create_provider_groups(ctx):
     ctx.status("creating provider groups")
-    pg_tbl = resource_models.get_table('provider_groups')
+    pg_tbl = db.get_table('provider_groups')
 
-    sess = resource_models.get_session()
+    sess = db.get_session()
 
     try:
         for pg in ctx.deployment_config.provider_groups.values():
@@ -325,18 +326,18 @@ def create_provider_groups(ctx):
 
 
 def create_providers(ctx):
-    rc_tbl = resource_models.get_table('resource_types')
-    cap_tbl = resource_models.get_table('capabilities')
-    part_tbl = resource_models.get_table('partitions')
-    pg_tbl = resource_models.get_table('provider_groups')
-    pg_members_tbl = resource_models.get_table('provider_group_members')
-    p_tbl = resource_models.get_table('providers')
-    p_caps_tbl = resource_models.get_table('provider_capabilities')
-    tree_tbl = resource_models.get_table('provider_trees')
-    inv_tbl = resource_models.get_table('inventories')
-    pd_tbl = resource_models.get_table('provider_distances')
-    dt_tbl = resource_models.get_table('distance_types')
-    d_tbl = resource_models.get_table('distances')
+    rc_tbl = db.get_table('resource_types')
+    cap_tbl = db.get_table('capabilities')
+    part_tbl = db.get_table('partitions')
+    pg_tbl = db.get_table('provider_groups')
+    pg_members_tbl = db.get_table('provider_group_members')
+    p_tbl = db.get_table('providers')
+    p_caps_tbl = db.get_table('provider_capabilities')
+    tree_tbl = db.get_table('provider_trees')
+    inv_tbl = db.get_table('inventories')
+    pd_tbl = db.get_table('provider_distances')
+    dt_tbl = db.get_table('distance_types')
+    d_tbl = db.get_table('distances')
 
     # in-process cache of partition name -> internal ID
     part_ids = {}
@@ -351,7 +352,7 @@ def create_providers(ctx):
     # Hashmap of (distance_type_code, distance_code) to internal ID
     distance_ids = {}
 
-    sess = resource_models.get_session()
+    sess = db.get_session()
     ctx.status("caching provider group internal IDs")
     for pg in ctx.deployment_config.provider_groups.values():
         if pg.uuid in pg_ids:

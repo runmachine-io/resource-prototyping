@@ -3,8 +3,6 @@ import os
 
 import yaml
 
-import resource_models
-
 
 class ProviderProfile(object):
     """A provider profile describes the inventory and capabilities for a

@@ -2,24 +2,25 @@
 
 import sqlalchemy as sa
 
+import db
 import exception
-import resource_models
+import models
 
 
 def providers_by_uuids(uuids):
     """Returns a dict, keyed by provider UUID, of Provider objects having one
     of the supplied UUIDs
     """
-    p_tbl = resource_models.get_table('providers')
+    p_tbl = db.get_table('providers')
     cols = [
         p_tbl.c.id,
         p_tbl.c.uuid,
         p_tbl.c.generation,
     ]
     sel = sa.select(cols).where(p_tbl.c.uuid.in_(uuids))
-    sess = resource_models.get_session()
+    sess = db.get_session()
     return {
-        r[0]: resource_models.Provider(
+        r[0]: models.Provider(
             id=r[0],
             uuid=r[1],
             generation=r[2],
@@ -35,7 +36,7 @@ def increment_generation(sess, provider):
             is different from the supplied generation, which indicates another
             thread changed the provider's state
     """
-    p_tbl = resource_models.get_table('providers')
+    p_tbl = db.get_table('providers')
 
     upd = p_tbl.update().where(
         sa.and_(

@@ -3,13 +3,14 @@
 
 import sqlalchemy as sa
 
-import resource_models
+import db
+import models
 
 _OBJECT_TYPE_MAP = None
 
 
 def _insert_records(tbl, recs):
-    sess = resource_models.get_session()
+    sess = db.get_session()
     for rec in recs:
         ins = tbl.insert().values(**rec)
         sess.execute(ins)
@@ -18,7 +19,7 @@ def _insert_records(tbl, recs):
 
 def create_object_types(ctx):
     ctx.status("creating object types")
-    tbl = resource_models.get_table('object_types')
+    tbl = db.get_table('object_types')
 
     recs = [
         dict(
@@ -58,16 +59,16 @@ def _get_object_type_map():
     global _OBJECT_TYPE_MAP
     if _OBJECT_TYPE_MAP is not None:
         return _OBJECT_TYPE_MAP
-    tbl = resource_models.get_table('object_types')
+    tbl = db.get_table('object_types')
     sel = sa.select([tbl.c.id, tbl.c.code])
-    sess = resource_models.get_session()
+    sess = db.get_session()
     _OBJECT_TYPE_MAP = {r[1]: r[0] for r in sess.execute(sel)}
     return _OBJECT_TYPE_MAP
 
 
 def create_object(sess, obj_type, uuid, name):
     """Adds a new name-uuid pair to the object_names table."""
-    obj_tbl = resource_models.get_table('object_names')
+    obj_tbl = db.get_table('object_names')
     object_type_id = _get_object_type_map()[obj_type]
 
     obj_rec = dict(

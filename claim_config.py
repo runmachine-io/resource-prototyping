@@ -5,7 +5,7 @@ import os
 
 import yaml
 
-import claim
+import models
 
 
 class ClaimConfig(object):
@@ -50,7 +50,7 @@ class ClaimConfig(object):
         require_caps = block.get('require')
         forbid_caps = block.get('forbid')
         any_caps = block.get('any')
-        constraint = claim.CapabilityConstraint(
+        constraint = models.CapabilityConstraint(
             require_caps=require_caps,
             forbid_caps=forbid_caps,
             any_caps=any_caps)
@@ -72,7 +72,7 @@ class ClaimConfig(object):
                 cap_constraint = self._process_capability_constraint(
                     res_request['capabilities'])
 
-            constraint = claim.ResourceConstraint(
+            constraint = models.ResourceConstraint(
                 rc_name, min_amount, max_amount,
                 capability_constraint=cap_constraint)
             constraints.append(constraint)
@@ -102,7 +102,7 @@ class ClaimConfig(object):
         require_groups = block.get('require')
         forbid_groups = block.get('forbid')
         any_groups = block.get('any')
-        constraint = claim.ProviderGroupConstraint(
+        constraint = models.ProviderGroupConstraint(
             require_groups=require_groups,
             forbid_groups=forbid_groups,
             any_groups=any_groups)
@@ -131,7 +131,7 @@ class ClaimConfig(object):
                 group_constraints = self._process_group_constraints(
                     request_group['groups'])
 
-            req_group = claim.ClaimRequestGroup(
+            req_group = models.ClaimRequestGroup(
                 resource_constraints=res_constraints,
                 capability_constraints=cap_constraints,
                 provider_group_constraints=group_constraints,
