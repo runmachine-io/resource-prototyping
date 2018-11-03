@@ -572,6 +572,9 @@ def _find_providers_with_resource(ctx, acquire_time, release_time,
     WHERE i.resource_type_id = $RESOURCE_TYPE
     AND ((i.total - i.reserved) * i.allocation_ratio) >=
          $RESOURCE_REQUEST_AMOUNT + COALESCE(usages.used, 0))
+    AND i.min_unit <= $RESOURCE_REQUEST_AMOUNT
+    AND i.max_unit >= $RESOURCE_REQUEST_AMOUNT
+    AND $RESOURCE_REQUEST_AMOUNT % i.step_size = 0
 
     If the optional `exclude` argument is provided, we tack on a:
 
@@ -644,7 +647,11 @@ def _find_providers_with_resource(ctx, acquire_time, release_time,
             inv_tbl.c.resource_type_id == rt_id,
             ((inv_tbl.c.total - inv_tbl.c.reserved)
                 * inv_tbl.c.allocation_ratio)
-            >= (resource_constraint.max_amount + func.coalesce(usage_subq.c.total_used, 0)))
+            >= (resource_constraint.max_amount + func.coalesce(usage_subq.c.total_used, 0)),
+            inv_tbl.c.min_unit <= resource_constraint.max_amount,
+            inv_tbl.c.max_unit >= resource_constraint.max_amount,
+            resource_constraint.max_amount % inv_tbl.c.step_size == 0,
+        )
     )
     if exclude:
         sel = sel.where(~p_tbl.c.id.in_(set(exclude)))
