@@ -70,14 +70,14 @@ def _get_capability_map():
     """Returns a dict, keyed by capability string code, of internal capability
     ID.
     """
-    global _CAPABILITY_MAP
-    if _CAPABILITY_MAP is not None:
-        return _CAPABILITY_MAP
+    global _CAPABILITIES_MAP
+    if _CAPABILITIES_MAP is not None:
+        return _CAPABILITIES_MAP
     tbl = db.get_table('capabilities')
     sel = sa.select([tbl.c.id, tbl.c.code])
     sess = db.get_session()
-    _CAPABILITY_MAP = {r[1]: r[0] for r in sess.execute(sel)}
-    return _CAPABILITY_MAP
+    _CAPABILITIES_MAP = {r[1]: r[0] for r in sess.execute(sel)}
+    return _CAPABILITIES_MAP
 
 
 def capability_id_from_code(code):

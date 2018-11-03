@@ -31,14 +31,15 @@ def process_claim_request(ctx, claim_request):
             item_to_group_map[item_index] = group_index
             item_index += 1
         alloc_items.extend(group_alloc_items)
-    return [
-        models.Claim(
-            claim_request.acquire_time,
-            claim_request.release_time,
-            alloc_items,
-            item_to_group_map,
-        ),
-    ]
+    if alloc_items:
+        return [
+            models.Claim(
+                claim_request.acquire_time,
+                claim_request.release_time,
+                alloc_items,
+                item_to_group_map,
+            ),
+        ]
 
 
 class MatchContext(object):

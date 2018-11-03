@@ -87,31 +87,47 @@ execute a single claim request described by a YAML file and selected with the
 Example output:
 
 ```
-(.venv) [jaypipes@uberbox poc]$ python run.py --reset \
-> --deployment-config 10k-shared-compute \
-> --claim-config 1cpu-64M-10G
-loading deployment config ... ok
-resetting resource PoC database ... ok
-creating object types ... ok
-creating provider types ... ok
-creating resource types ... ok
-creating consumer types ... ok
-creating capabilities ... ok
-creating distance types ... ok
-creating distances ... ok
-creating partitions ... ok
-creating provider groups ... ok
-caching provider group internal IDs ... ok
-caching resource type and capability internal IDs ... ok
-caching partition, distance type and distance internal IDs ... ok
-creating providers ... ok
-loading claim config ... ok
-Found 50 providers with capacity for 1000000000 runm.block_storage
-Found 50 providers with capacity for 67108864 runm.memory
-Found 50 providers with capacity for 1 runm.cpu.shared
-Claim(allocation=
-    Allocation(consumer=Consumer(name=instance0,uuid=e8495d7172714de0a0106e6a4c4927f7),claim_time=1540490434,release_time=9223372036854775807,items=[
-        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_type=runm.block_storage,used=1000000000),
-        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_type=runm.memory,used=67108864),
-        AllocationItem(provider=Provider(uuid=00af7f6b00224f81acea148e3318fe34),resource_type=runm.cpu.shared,used=1)]))
+(.venv) [jaypipes@uberbox resource-prototyping]$ python run.py --reset \
+    --deployment-config 1k-shared-compute \
+    --claim-config 1cpu-64M-10G
+action: loading deployment config ... ok
+action: resetting resource PoC database ... ok
+action: creating object types ... ok
+action: creating provider types ... ok
+action: creating resource types ... ok
+action: creating consumer types ... ok
+action: creating capabilities ... ok
+action: creating distance types ... ok
+action: creating distances ... ok
+action: creating partitions ... ok
+action: creating provider groups ... ok
+action: caching provider group internal IDs ... ok
+action: caching resource type and capability internal IDs ... ok
+action: caching partition, distance type and distance internal IDs ... ok
+action: creating providers ... ok
+action: loading claim config ... ok
+info: found 50 providers matching ResourceConstraint(resource_type=runm.block_storage,min_amount=1000000000,max_amount=1000000000,capabilities=None)
+info: found 50 providers matching ResourceConstraint(resource_type=runm.memory,min_amount=67108864,max_amount=67108864,capabilities=None)
+info: found 50 providers matching ResourceConstraint(resource_type=runm.cpu.shared,min_amount=1,max_amount=1,capabilities=None)
+info: found 1 claims
+info: claim 0: Claim(allocation_items=[
+        AllocationItem(provider=Provider(uuid=7aa084e6b80b4ca6a00b36a6b37255fd),resource_type=runm.block_storage,used=1000000000),
+        AllocationItem(provider=Provider(uuid=7aa084e6b80b4ca6a00b36a6b37255fd),resource_type=runm.memory,used=67108864),
+        AllocationItem(provider=Provider(uuid=7aa084e6b80b4ca6a00b36a6b37255fd),resource_type=runm.cpu.shared,used=1)])
+```
+
+To execute the claim that is returned, pass the `--execute-claim` CLI option:
+
+```
+(.venv) [jaypipes@uberbox resource-prototyping]$ python run.py --execute-claim
+action: loading claim config ... ok
+info: found 50 providers matching ResourceConstraint(resource_type=runm.block_storage,min_amount=1000000000,max_amount=1000000000,capabilities=None)
+info: found 50 providers matching ResourceConstraint(resource_type=runm.memory,min_amount=67108864,max_amount=67108864,capabilities=None)
+info: found 50 providers matching ResourceConstraint(resource_type=runm.cpu.shared,min_amount=1,max_amount=1,capabilities=None)
+info: found 1 claims
+info: claim 0: Claim(allocation_items=[
+        AllocationItem(provider=Provider(uuid=ce983fd54faf4bcfadbffba8d238cc14),resource_type=runm.block_storage,used=1000000000),
+        AllocationItem(provider=Provider(uuid=ce983fd54faf4bcfadbffba8d238cc14),resource_type=runm.memory,used=67108864),
+        AllocationItem(provider=Provider(uuid=ce983fd54faf4bcfadbffba8d238cc14),resource_type=runm.cpu.shared,used=1)])
+action: executing claim 0 ... ok
 ```
