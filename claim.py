@@ -436,17 +436,6 @@ def _find_providers_with_any_caps(ctx, caps, limit=50):
     }
 
 
-def _rt_id_from_code(sess, resource_type):
-    rc_tbl = db.get_table('resource_types')
-    sel = sa.select([rc_tbl.c.id]).where(rc_tbl.c.code == resource_type)
-
-    res = sess.execute(sel).fetchone()
-    if not res:
-        raise ValueError("Could not find ID for resource type %s" %
-                         resource_type)
-    return res[0]
-
-
 def _find_providers_with_resource(ctx, acquire_time, release_time,
         resource_constraint, exclude=None, limit=50):
     """Queries for providers that have capacity for the requested amount of a
@@ -498,7 +487,8 @@ def _find_providers_with_resource(ctx, acquire_time, release_time,
 
     sess = db.get_session()
 
-    rt_id = _rt_id_from_code(sess, resource_constraint.resource_type)
+    rt_id = lookup.resource_type_id_from_code(
+        resource_constraint.resource_type)
     alloc_window_cols = [
         alloc_tbl.c.id.label('allocation_id'),
     ]
@@ -553,7 +543,8 @@ def _find_providers_with_resource(ctx, acquire_time, release_time,
             inv_tbl.c.resource_type_id == rt_id,
             ((inv_tbl.c.total - inv_tbl.c.reserved)
                 * inv_tbl.c.allocation_ratio)
-            >= (resource_constraint.max_amount + func.coalesce(usage_subq.c.total_used, 0)),
+            >= (resource_constraint.max_amount +
+                func.coalesce(usage_subq.c.total_used, 0)),
             inv_tbl.c.min_unit <= resource_constraint.max_amount,
             inv_tbl.c.max_unit >= resource_constraint.max_amount,
             resource_constraint.max_amount % inv_tbl.c.step_size == 0,
@@ -682,16 +673,16 @@ def _create_allocation(sess, consumer, claim):
 
 def _check_provider_capacity(sess, claim_obj):
     """Verifies that providers have capacity for all resources listed in the
-    supplied models.Claim object's list of allocations and returns a dict, keyed by
-    provider UUID, of Provider objects that include the provider's generation
-    at the time of the capacity check.
+    supplied models.Claim object's list of allocations and returns a dict,
+    keyed by provider UUID, of Provider objects that include the provider's
+    generation at the time of the capacity check.
     """
     p_ids = set(
        alloc_item.provider.id for alloc_item in claim_obj.allocation_items
     )
 
     rt_ids = set(
-        _rt_id_from_code(sess, alloc_item.resource_type)
+        lookup.resource_type_id_from_code(alloc_item.resource_type)
         for alloc_item in claim_obj.allocation_items
     )
 
@@ -842,7 +833,8 @@ def _check_provider_capacity(sess, claim_obj):
                 provider=alloc_item.provider.uuid,
             )
         else:
-            alloc_rt_id = _rt_id_from_code(sess, alloc_item.resource_type)
+            alloc_rt_id = lookup.resource_type_id_from_code(
+                alloc_item.resource_type)
             alloc_p_id = alloc_item.provider.id
             if alloc_rt_id not in provider_usages[alloc_p_id].usages:
                 raise exception.MissingInventory(
@@ -853,7 +845,8 @@ def _check_provider_capacity(sess, claim_obj):
     # Do the checks again that resource constraint amounts, step sizing, min
     # and max unit are not violated
     for alloc_item in claim_obj.allocation_items:
-        alloc_rt_id = _rt_id_from_code(sess, alloc_item.resource_type)
+        alloc_rt_id = lookup.resource_type_id_from_code(
+            alloc_item.resource_type)
         alloc_p_id = alloc_item.provider.id
         usage = provider_usages[alloc_p_id].usages[alloc_rt_id]
         amount_needed = alloc_item.used
