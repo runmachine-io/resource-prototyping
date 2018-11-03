@@ -4,11 +4,12 @@ import sqlalchemy as sa
 from sqlalchemy import func
 
 import consumer
+import db
 import exception
 import lookup
 import metadata
+import models
 import provider
-import resource_models
 
 UNLIMITED = -1
 
@@ -218,14 +219,14 @@ def _process_claim_request_group(ctx, claim_request, group_index):
     # Now add an allocation item for the first provider that is in the
     # matches set for each resource type in the constraint
     chosen_id = iter(mctx.matches).next()
-    chosen = resource_models.Provider(
+    chosen = models.Provider(
         id=chosen_id,
         uuid=mctx.matches[chosen_id],
     )
     for rc_constraint in mctx.request_group.resource_constraints:
         # Add the first provider supplying this resource type to our
         # allocation
-        alloc_item = resource_models.AllocationItem(
+        alloc_item = models.AllocationItem(
             resource_type=rc_constraint.resource_type,
             provider=chosen,
             used=rc_constraint.max_amount,
@@ -436,10 +437,10 @@ def _process_resource_constraints(ctx, mctx):
 
 
 def _cap_id_from_code(ctx, cap):
-    cap_tbl = resource_models.get_table('capabilities')
+    cap_tbl = db.get_table('capabilities')
     sel = sa.select([cap_tbl.c.id]).where(cap_tbl.c.code == cap)
 
-    sess = resource_models.get_session()
+    sess = db.get_session()
     res = sess.execute(sel).fetchone()
     if not res:
         raise ValueError("Could not find ID for capability %s" % cap)
@@ -459,8 +460,8 @@ def _find_providers_with_all_caps(ctx, caps, limit=50):
     GROUP BY p.id
     HAVING COUNT(pc.capability_id) == $NUM_CAPABILITIES
     """
-    p_tbl = resource_models.get_table('providers')
-    p_caps_tbl = resource_models.get_table('provider_capabilities')
+    p_tbl = db.get_table('providers')
+    p_caps_tbl = db.get_table('provider_capabilities')
 
     cap_ids = [
         _cap_id_from_code(ctx, cap) for cap in caps
@@ -485,7 +486,7 @@ def _find_providers_with_all_caps(ctx, caps, limit=50):
     )
     if limit != UNLIMITED:
         sel = sel.limit(limit)
-    sess = resource_models.get_session()
+    sess = db.get_session()
     return {
         r[0]: r[1] for r in sess.execute(sel)
     }
@@ -502,8 +503,8 @@ def _find_providers_with_any_caps(ctx, caps, limit=50):
       ON p.id = pc.provider_id
     WHERE pc.capability_id IN ($CAPABILITIES)
     """
-    p_tbl = resource_models.get_table('providers')
-    p_caps_tbl = resource_models.get_table('provider_capabilities')
+    p_tbl = db.get_table('providers')
+    p_caps_tbl = db.get_table('provider_capabilities')
 
     cap_ids = [
         _cap_id_from_code(ctx, cap) for cap in caps
@@ -524,14 +525,14 @@ def _find_providers_with_any_caps(ctx, caps, limit=50):
     )
     if limit != UNLIMITED:
         sel = sel.limit(limit)
-    sess = resource_models.get_session()
+    sess = db.get_session()
     return {
         r[0]: r[1] for r in sess.execute(sel)
     }
 
 
 def _rt_id_from_code(sess, resource_type):
-    rc_tbl = resource_models.get_table('resource_types')
+    rc_tbl = db.get_table('resource_types')
     sel = sa.select([rc_tbl.c.id]).where(rc_tbl.c.code == resource_type)
 
     res = sess.execute(sel).fetchone()
@@ -585,12 +586,12 @@ def _find_providers_with_resource(ctx, acquire_time, release_time,
     providers that should be excluded (they met an "exclusion filter" -- i.e.
     they matched for a 'forbid' specification in a constraint).
     """
-    p_tbl = resource_models.get_table('providers')
-    inv_tbl = resource_models.get_table('inventories')
-    alloc_tbl = resource_models.get_table('allocations')
-    alloc_item_tbl = resource_models.get_table('allocation_items')
+    p_tbl = db.get_table('providers')
+    inv_tbl = db.get_table('inventories')
+    alloc_tbl = db.get_table('allocations')
+    alloc_item_tbl = db.get_table('allocation_items')
 
-    sess = resource_models.get_session()
+    sess = db.get_session()
 
     rt_id = _rt_id_from_code(sess, resource_constraint.resource_type)
     alloc_window_cols = [
@@ -688,8 +689,8 @@ def _select_add_capability_constraint(ctx, relation, constraint):
         AND pc.capability_id NOT IN ($FORBID_CAPS)
 
     """
-    p_tbl = resource_models.get_table('providers')
-    p_caps_tbl = resource_models.get_table('provider_capabilities')
+    p_tbl = db.get_table('providers')
+    p_caps_tbl = db.get_table('provider_capabilities')
     p_caps_tbl = sa.alias(p_caps_tbl, name='pc')
     if constraint.require_caps:
         if len(constraint.require_caps) == 1:
@@ -754,7 +755,7 @@ def _create_allocation(sess, consumer, claim):
     """Creates the primary allocation table record and returns the internal ID
     of the created allocation.
     """
-    alloc_tbl = resource_models.get_table('allocations')
+    alloc_tbl = db.get_table('allocations')
 
     ins = alloc_tbl.insert().values(
         consumer_id=consumer.id,
@@ -843,10 +844,10 @@ def _check_provider_capacity(sess, claim_obj):
     # WHERE i.resource_type_id IN ($RESOURCE_TYPES)
     # AND p.id IN ($PROVIDER_IDS)
 
-    p_tbl = resource_models.get_table('providers')
-    inv_tbl = resource_models.get_table('inventories')
-    alloc_tbl = resource_models.get_table('allocations')
-    alloc_item_tbl = resource_models.get_table('allocation_items')
+    p_tbl = db.get_table('providers')
+    inv_tbl = db.get_table('inventories')
+    alloc_tbl = db.get_table('allocations')
+    alloc_item_tbl = db.get_table('allocation_items')
 
     alloc_window_cols = [
         alloc_tbl.c.id.label('allocation_id'),
@@ -922,7 +923,7 @@ def _check_provider_capacity(sess, claim_obj):
     for rec in recs:
         p_id = rec['provider_id']
         if p_id not in provider_usages:
-            p_obj = resource_models.Provider(
+            p_obj = models.Provider(
                 id=p_id,
                 uuid=rec['provider_uuid'],
                 generation=rec['provider_generation'],
@@ -1027,9 +1028,9 @@ def execute(ctx, consumer_obj, claim):
     listed in the claim. Returns None on successful execution, otherwise raises
     an exception indicating what went wrong.
     """
-    alloc_items_tbl = resource_models.get_table('allocation_items')
+    alloc_items_tbl = db.get_table('allocation_items')
 
-    sess = resource_models.get_session()
+    sess = db.get_session()
 
     # Before we start, grab the provider internal ID and generation for each
     # provider involved in our allocation items. We'll use these generations at

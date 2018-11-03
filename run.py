@@ -10,11 +10,11 @@ import sys
 import time
 
 import claim
-import load
 import claim_config
 import deployment_config
+import load
+import models
 import provider_profile
-import resource_models
 
 
 VOWELS = "aeiou"
@@ -152,7 +152,7 @@ def main(ctx):
     if ctx.args.reset:
         reset(ctx)
 
-    consumer = resource_models.Consumer(name=random_instance_name())
+    consumer = models.Consumer(name=random_instance_name())
 
     for x, c in enumerate(find_claims(ctx, consumer)):
         ctx.info("claim %d: %s", x, c)

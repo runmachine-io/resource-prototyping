@@ -6,7 +6,7 @@ import os
 
 import yaml
 
-import resource_models
+import models
 
 
 class DeploymentConfig(object):
@@ -50,11 +50,11 @@ class DeploymentConfig(object):
 
     def _load_partitions(self):
         # For now, just have a single hard-coded partition
-        self.partitions['part0'] = resource_models.Partition('part0')
+        self.partitions['part0'] = models.Partition('part0')
 
     def _load_provider_groups(self):
         for site_name in self.layout['sites']:
-            pg = resource_models.ProviderGroup(site_name)
+            pg = models.ProviderGroup(site_name)
             self.provider_groups[pg.name] = pg
 
             for row_id in range(self.count_rows_per_site):
@@ -62,7 +62,7 @@ class DeploymentConfig(object):
                         site_name,
                         row_id,
                     )
-                pg = resource_models.ProviderGroup(pg_name)
+                pg = models.ProviderGroup(pg_name)
                 self.provider_groups[pg.name] = pg
                 for rack_id in range(self.count_racks_per_row):
                     pg_name = "%s-row%s-rack%s" % (
@@ -70,7 +70,7 @@ class DeploymentConfig(object):
                             row_id,
                             rack_id,
                         )
-                    pg = resource_models.ProviderGroup(pg_name)
+                    pg = models.ProviderGroup(pg_name)
                     self.provider_groups[pg.name] = pg
 
     def _calculate_distances(self, p):
@@ -89,10 +89,10 @@ class DeploymentConfig(object):
                 # site, not any provider group representing smaller subgroups
                 # (such as a row or rack) that is IN that other site....
                 if pg.is_site:
-                    d = resource_models.ProviderGroupDistance(
+                    d = models.ProviderGroupDistance(
                         pg, "network", "remote")
                     distances.append(d)
-                    d = resource_models.ProviderGroupDistance(
+                    d = models.ProviderGroupDistance(
                         pg, "failure", "site")
                     distances.append(d)
             else:
@@ -106,11 +106,11 @@ class DeploymentConfig(object):
                         if p_rack_id == pg_rack_id:
                             # Provider is in the same rack as the provider
                             # group so is in a "local" failure domain
-                            d = resource_models.ProviderGroupDistance(
+                            d = models.ProviderGroupDistance(
                                 pg, "failure", "local")
                             distances.append(d)
                             # And is in a "local" distance for network latency
-                            d = resource_models.ProviderGroupDistance(
+                            d = models.ProviderGroupDistance(
                                 pg, "network", "local")
                             distances.append(d)
                 elif pg.is_row:
@@ -119,7 +119,7 @@ class DeploymentConfig(object):
                     # perspective, so we add distance records representing
                     # "site-local" latency between the provider and the *row*
                     # provider group
-                    d = resource_models.ProviderGroupDistance(
+                    d = models.ProviderGroupDistance(
                         pg, "network", "site")
                     distances.append(d)
                     # For failure domain, it *does* matter whether the provider
@@ -130,11 +130,11 @@ class DeploymentConfig(object):
                         # Provider is in the same row as the row provider group
                         # so is in a different "rack" failure domain from other
                         # nodes in the row that are not also in the same rack
-                        d = resource_models.ProviderGroupDistance(
+                        d = models.ProviderGroupDistance(
                             pg, "failure", "rack")
                         distances.append(d)
                     else:
-                        d = resource_models.ProviderGroupDistance(
+                        d = models.ProviderGroupDistance(
                             pg, "failure", "row")
                         distances.append(d)
 
@@ -193,7 +193,7 @@ class DeploymentConfig(object):
                         # OK, now we construct the distance matrix. For now,
                         # we're just going to hard-code the network latency
                         # distances between sites, rows and racks
-                        p = resource_models.Provider(
+                        p = models.Provider(
                             provider_name, partition, groups, profile)
                         self._calculate_distances(p)
                         self.providers[p.name] = p
